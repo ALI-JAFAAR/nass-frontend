@@ -1,0 +1,8 @@
+Place your custom notification sound at:
+
+  public/notification.mp3
+
+The app will try to play /notification.mp3 on each notification.
+If the file is missing or autoplay is blocked, it falls back to a short beep.
+
+
