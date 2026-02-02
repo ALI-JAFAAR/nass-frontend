@@ -126,18 +126,6 @@
               تعديل
             </button>
             <button
-              class="px-2 py-0.5 text-xs rounded border"
-              @click="openVariantsDialog(item)"
-            >
-              الخصائص
-            </button>
-            <button
-              class="px-2 py-0.5 text-xs rounded border"
-              @click="openImagesDialog(item)"
-            >
-              الصور
-            </button>
-            <button
               class="px-2 py-0.5 text-xs rounded bg-red-600 text-white"
               @click="confirmDelete(item)"
             >
@@ -196,10 +184,45 @@
           <button class="text-gray-500" @click="closeDialog">✕</button>
         </div>
 
+        <!-- Tabs: keep everything in one dialog -->
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button
+            type="button"
+            class="px-3 py-2 rounded border text-sm"
+            :class="dialogTab === 'form' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'"
+            @click="dialogTab = 'form'"
+          >
+            بيانات المنتج
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded border text-sm disabled:opacity-60"
+            :class="dialogTab === 'variants' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'"
+            :disabled="!activeDialogProduct"
+            @click="dialogTab = 'variants'"
+          >
+            الخصائص
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 rounded border text-sm disabled:opacity-60"
+            :class="dialogTab === 'images' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'"
+            :disabled="!activeDialogProduct"
+            @click="dialogTab = 'images'"
+          >
+            الصور
+          </button>
+
+          <div v-if="!activeDialogProduct" class="text-xs text-gray-500 flex items-center">
+            احفظ المنتج أولاً لتفعيل (الخصائص/الصور).
+          </div>
+        </div>
+
         <div v-if="formErrors.global" class="text-red-600 text-sm mb-2">
           {{ formErrors.global }}
         </div>
 
+        <div v-if="dialogTab === 'form'">
         <form class="space-y-4" @submit.prevent="submitProduct">
           <div class="grid md:grid-cols-2 gap-4">
             <div v-if="isSuperAdmin">
@@ -325,26 +348,6 @@
         </div>
           </div>
           
-          <div v-if="activeDialogProduct" class="rounded border bg-gray-50 p-3 mt-4">
-            <div class="text-sm font-semibold mb-2">الصور والخصائص من نفس النافذة</div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="px-3 py-2 rounded border bg-white hover:bg-gray-50 text-sm"
-                @click="openVariantsDialog(activeDialogProduct as any)"
-              >
-                الخصائص
-              </button>
-              <button
-                type="button"
-                class="px-3 py-2 rounded border bg-white hover:bg-gray-50 text-sm"
-                @click="openImagesDialog(activeDialogProduct as any)"
-              >
-                الصور
-              </button>
-            </div>
-          </div>
-
           <div>
             <label class="block mb-1 text-sm">الوصف</label>
             <textarea
@@ -435,318 +438,218 @@
             </button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <!-- Variants dialog (unchanged core behavior, adapted to new data) -->
-    <div
-      v-if="isVariantsDialogOpen && currentProductForVariants"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      @click.self="closeVariantsDialog"
-    >
-      <div
-        class="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5"
-        dir="rtl"
-      >
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">
-            خصائص المنتج: {{ currentProductForVariants.name }}
-        </h3>
-          <button
-            class="px-3 py-1 border rounded text-sm"
-            @click="closeVariantsDialog"
-          >
-            إغلاق
-          </button>
         </div>
 
-        <div v-if="variantError" class="text-red-600 text-sm mb-2">
-          {{ variantError }}
-        </div>
-
-        <div class="mb-4">
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th class="border-b px-2 py-1 text-right">رمز الخاصية</th>
-                <th class="border-b px-2 py-1 text-right">اللون</th>
-                <th class="border-b px-2 py-1 text-right">الحجم</th>
-                <th class="border-b px-2 py-1 text-right">السعر</th>
-                <th class="border-b px-2 py-1 text-right">المخزن</th>
-                <th class="border-b px-2 py-1 text-right">مفعل</th>
-                <th class="border-b px-2 py-1 text-right">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="variants.length === 0">
-                <td colspan="7" class="border-b px-2 py-2 text-center text-gray-500">
-                  لا توجد خصائص لهذا المنتج.
-                </td>
-              </tr>
-              <tr v-for="v in variants" :key="v.id">
-                <td class="border-b px-2 py-1">{{ v.sku }}</td>
-                <td class="border-b px-2 py-1">{{ v.color }}</td>
-                <td class="border-b px-2 py-1">{{ v.size }}</td>
-                <td class="border-b px-2 py-1">{{ v.price }}</td>
-                <td class="border-b px-2 py-1">{{ v.stock }}</td>
-                <td class="border-b px-2 py-1">
-                  <span
-                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
-                    :class="v.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
-                  >
-                    {{ v.is_active ? "نعم" : "لا" }}
-                  </span>
-                </td>
-                <td class="border-b px-2 py-1 space-x-2 space-x-reverse">
-                  <button
-                    class="px-2 py-0.5 text-xs rounded border"
-                    @click="startEditVariant(v)"
-                  >
-                    تعديل
-                  </button>
-                  <button
-                    class="px-2 py-0.5 text-xs rounded bg-red-600 text-white"
-                    @click="deleteVariant(v)"
-                  >
-                    حذف
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Variant form -->
-        <div class="border-t pt-4 mt-4">
-          <h4 class="font-semibold mb-2 text-sm">
-            {{ editingVariant ? "تعديل خاصية" : "إضافة خاصية جديدة" }}
-          </h4>
-          <form class="grid md:grid-cols-2 gap-3" @submit.prevent="submitVariant">
-          <div>
-              <label class="block mb-1 text-sm">رمز/اسم الخاصية *</label>
-            <input
-                v-model="variantForm.sku"
-                class="w-full border rounded px-3 py-2 text-sm"
-            />
+        <!-- Variants inline (same dialog) -->
+        <div v-else-if="dialogTab === 'variants'">
+          <div v-if="!currentProductForVariants" class="text-sm text-gray-600">
+            احفظ المنتج أولاً.
           </div>
-          <div>
-              <label class="block mb-1 text-sm">نوع الخاصية</label>
-              <select
-                v-model="variantForm.type"
-                class="w-full border rounded px-2 py-1 text-sm"
-              >
-                <option value="color">لون</option>
-                <option value="size">حجم</option>
-              </select>
-            </div>
-            <div v-if="variantForm.type === 'color'">
-              <label class="block mb-1 text-sm">اللون</label>
-            <input
-                v-model="variantForm.color"
-                class="w-full border rounded px-3 py-2 text-sm"
-              />
-            </div>
-            <div v-else>
-              <label class="block mb-1 text-sm">الحجم</label>
-              <input
-                v-model="variantForm.size"
-                class="w-full border rounded px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label class="block mb-1 text-sm">السعر</label>
-              <input
-                v-model="variantForm.price"
-              type="number"
-              step="0.01"
-                min="0"
-                class="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-              <label class="block mb-1 text-sm">المخزن</label>
-            <input
-                v-model="variantForm.stock"
-              type="number"
-                min="0"
-                class="w-full border rounded px-3 py-2 text-sm"
-            />
-          </div>
-            <div class="flex items-center gap-2 mt-6">
-              <input
-                id="variant-active"
-                v-model="variantForm.is_active"
-                type="checkbox"
-                class="h-4 w-4"
-              />
-              <label for="variant-active" class="text-sm">مفعل</label>
-            </div>
-
-            <!-- Variant properties key/value -->
-            <div class="md:col-span-2">
-              <label class="block mb-1 text-sm">خواص النسخة (مفتاح / قيمة)</label>
-              <div class="space-y-2">
-                <div
-                  v-for="(pair, idx) in variantForm.properties"
-                  :key="idx"
-                  class="flex gap-2"
-                >
-                  <input
-                    v-model="pair.key"
-                    placeholder="Key"
-                    class="flex-1 border rounded px-2 py-1 text-sm"
-                  />
-                  <input
-                    v-model="pair.value"
-                    placeholder="Value"
-                    class="flex-1 border rounded px-2 py-1 text-sm"
-              />
-              <button
-                type="button"
-                    class="px-2 py-1 rounded bg-red-600 text-white text-xs"
-                    @click="removeProperty(idx)"
-              >
-                    ×
+          <div v-else>
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-semibold">
+                خصائص المنتج: {{ currentProductForVariants.name }}
+              </h3>
+              <button type="button" class="px-3 py-1 border rounded text-sm" @click="dialogTab = 'form'">
+                رجوع
               </button>
             </div>
-                <button
-                  type="button"
-                  class="px-3 py-1 rounded border text-xs"
-                  @click="addProperty"
-                >
-                  إضافة خاصية
-                </button>
-          </div>
+
+            <div v-if="variantError" class="text-red-600 text-sm mb-2">
+              {{ variantError }}
             </div>
 
-            <div class="md:col-span-2 flex justify-end gap-2 pt-2">
-            <button
-              type="submit"
-                class="px-4 py-2 rounded bg-green-600 text-white text-sm"
-            >
-                {{ editingVariant ? "تحديث الخاصية" : "إضافة الخاصية" }}
-            </button>
-            <button
-              type="button"
-                class="px-4 py-2 rounded border text-sm"
-                @click="resetVariantForm"
-            >
-                تهيئة النموذج
-            </button>
-          </div>
-        </form>
-        </div>
-      </div>
-    </div>
+            <div class="mb-4">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th class="border-b px-2 py-1 text-right">رمز الخاصية</th>
+                    <th class="border-b px-2 py-1 text-right">اللون</th>
+                    <th class="border-b px-2 py-1 text-right">الحجم</th>
+                    <th class="border-b px-2 py-1 text-right">السعر</th>
+                    <th class="border-b px-2 py-1 text-right">المخزن</th>
+                    <th class="border-b px-2 py-1 text-right">مفعل</th>
+                    <th class="border-b px-2 py-1 text-right">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="variants.length === 0">
+                    <td colspan="7" class="border-b px-2 py-2 text-center text-gray-500">
+                      لا توجد خصائص لهذا المنتج.
+                    </td>
+                  </tr>
+                  <tr v-for="v in variants" :key="v.id">
+                    <td class="border-b px-2 py-1">{{ v.sku }}</td>
+                    <td class="border-b px-2 py-1">{{ v.color }}</td>
+                    <td class="border-b px-2 py-1">{{ v.size }}</td>
+                    <td class="border-b px-2 py-1">{{ v.price }}</td>
+                    <td class="border-b px-2 py-1">{{ v.stock }}</td>
+                    <td class="border-b px-2 py-1">
+                      <span
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
+                        :class="v.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+                      >
+                        {{ v.is_active ? "نعم" : "لا" }}
+                      </span>
+                    </td>
+                    <td class="border-b px-2 py-1 space-x-2 space-x-reverse">
+                      <button class="px-2 py-0.5 text-xs rounded border" @click="startEditVariant(v)">
+                        تعديل
+                      </button>
+                      <button class="px-2 py-0.5 text-xs rounded bg-red-600 text-white" @click="deleteVariant(v)">
+                        حذف
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-    <!-- Images dialog -->
-    <div
-      v-if="isImagesDialogOpen && currentProductForImages"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      @click.self="closeImagesDialog"
-    >
-      <div
-        class="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5"
-        dir="rtl"
-      >
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">
-            صور المنتج: {{ currentProductForImages.name }}
-          </h3>
-          <button
-            class="px-3 py-1 border rounded text-sm"
-            @click="closeImagesDialog"
-          >
-            إغلاق
-          </button>
-        </div>
+            <div class="border-t pt-4 mt-4">
+              <h4 class="font-semibold mb-2 text-sm">
+                {{ editingVariant ? "تعديل خاصية" : "إضافة خاصية جديدة" }}
+              </h4>
+              <form class="grid md:grid-cols-2 gap-3" @submit.prevent="submitVariant">
+                <div>
+                  <label class="block mb-1 text-sm">رمز/اسم الخاصية *</label>
+                  <input v-model="variantForm.sku" class="w-full border rounded px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm">نوع الخاصية</label>
+                  <select v-model="variantForm.type" class="w-full border rounded px-2 py-1 text-sm">
+                    <option value="color">لون</option>
+                    <option value="size">حجم</option>
+                  </select>
+                </div>
+                <div v-if="variantForm.type === 'color'">
+                  <label class="block mb-1 text-sm">اللون</label>
+                  <input v-model="variantForm.color" class="w-full border rounded px-3 py-2 text-sm" />
+                </div>
+                <div v-else>
+                  <label class="block mb-1 text-sm">الحجم</label>
+                  <input v-model="variantForm.size" class="w-full border rounded px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm">السعر</label>
+                  <input v-model="variantForm.price" type="number" step="0.01" min="0" class="w-full border rounded px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm">المخزن</label>
+                  <input v-model="variantForm.stock" type="number" min="0" class="w-full border rounded px-3 py-2 text-sm" />
+                </div>
+                <div class="flex items-center gap-2 mt-6">
+                  <input id="variant-active" v-model="variantForm.is_active" type="checkbox" class="h-4 w-4" />
+                  <label for="variant-active" class="text-sm">مفعل</label>
+                </div>
 
-        <div v-if="imageError" class="text-red-600 text-sm mb-2">
-          {{ imageError }}
-        </div>
+                <div class="md:col-span-2">
+                  <label class="block mb-1 text-sm">خواص النسخة (مفتاح / قيمة)</label>
+                  <div class="space-y-2">
+                    <div v-for="(pair, idx) in variantForm.properties" :key="idx" class="flex gap-2">
+                      <input v-model="pair.key" placeholder="Key" class="flex-1 border rounded px-2 py-1 text-sm" />
+                      <input v-model="pair.value" placeholder="Value" class="flex-1 border rounded px-2 py-1 text-sm" />
+                      <button type="button" class="px-2 py-1 rounded bg-red-600 text-white text-xs" @click="removeProperty(idx)">
+                        ×
+                      </button>
+                    </div>
+                    <button type="button" class="px-3 py-1 rounded border text-xs" @click="addProperty">
+                      إضافة خاصية
+                    </button>
+                  </div>
+                </div>
 
-        <div class="mb-4">
-          <table class="w-full text-sm border-collapse">
-            <thead>
-              <tr>
-                <th class="border-b px-2 py-1 text-right">الصورة</th>
-                <th class="border-b px-2 py-1 text-right">الترتيب</th>
-                <th class="border-b px-2 py-1 text-right">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="images.length === 0">
-                <td colspan="3" class="border-b px-2 py-2 text-center text-gray-500">
-                  لا توجد صور لهذا المنتج.
-                </td>
-              </tr>
-              <tr v-for="img in images" :key="img.id">
-                <td class="border-b px-2 py-1">
-                  <img
-                    :src="img.url"
-                    alt=""
-                    class="w-16 h-16 object-cover rounded border"
-                  />
-                </td>
-                <td class="border-b px-2 py-1">
-                  {{ img.sort_order }}
-                </td>
-                <td class="border-b px-2 py-1 space-x-2 space-x-reverse">
-                  <button
-                    class="px-2 py-0.5 text-xs rounded border"
-                    @click="startEditImage(img)"
-                  >
-                    تعديل
+                <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+                  <button type="submit" class="px-4 py-2 rounded bg-green-600 text-white text-sm">
+                    {{ editingVariant ? "تحديث الخاصية" : "إضافة الخاصية" }}
                   </button>
-                  <button
-                    class="px-2 py-0.5 text-xs rounded bg-red-600 text-white"
-                    @click="deleteImage(img)"
-                  >
-                    حذف
+                  <button type="button" class="px-4 py-2 rounded border text-sm" @click="resetVariantForm">
+                    تهيئة النموذج
                   </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
-        <div class="border-t pt-4 mt-4">
-          <h4 class="font-semibold mb-2 text-sm">
-            {{ editingImage ? "تعديل صورة" : "إضافة صورة جديدة" }}
-          </h4>
-          <div class="space-y-3">
-            <div>
-              <label class="block mb-1 text-sm">الصورة</label>
-              <input type="file" accept="image/*" @change="onImageFileChange" />
-            </div>
-            <div>
-              <label class="block mb-1 text-sm">الترتيب</label>
-              <input
-                v-model.number="imageForm.sort_order"
-                type="number"
-                class="border rounded px-2 py-1 w-32 text-sm"
-              />
-            </div>
-            <div v-if="imagePreview" class="mt-2">
-              <img
-                :src="imagePreview"
-                alt=""
-                class="w-32 h-32 object-cover rounded border"
-              />
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-              <button
-                class="px-3 py-1 rounded border text-sm"
-                @click="resetImageForm"
-              >
-                تهيئة
+        <!-- Images inline (same dialog) -->
+        <div v-else-if="dialogTab === 'images'">
+          <div v-if="!currentProductForImages" class="text-sm text-gray-600">
+            احفظ المنتج أولاً.
+          </div>
+          <div v-else>
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-semibold">
+                صور المنتج: {{ currentProductForImages.name }}
+              </h3>
+              <button type="button" class="px-3 py-1 border rounded text-sm" @click="dialogTab = 'form'">
+                رجوع
               </button>
-              <button
-                class="px-3 py-1 rounded bg-green-600 text-white text-sm"
-                @click="submitImage"
-              >
-                حفظ الصورة
-              </button>
+            </div>
+
+            <div v-if="imageError" class="text-red-600 text-sm mb-2">
+              {{ imageError }}
+            </div>
+
+            <div class="mb-4">
+              <table class="w-full text-sm border-collapse">
+                <thead>
+                  <tr>
+                    <th class="border-b px-2 py-1 text-right">الصورة</th>
+                    <th class="border-b px-2 py-1 text-right">الترتيب</th>
+                    <th class="border-b px-2 py-1 text-right">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="images.length === 0">
+                    <td colspan="3" class="border-b px-2 py-2 text-center text-gray-500">
+                      لا توجد صور لهذا المنتج.
+                    </td>
+                  </tr>
+                  <tr v-for="img in images" :key="img.id">
+                    <td class="border-b px-2 py-1">
+                      <img :src="img.url" alt="" class="w-16 h-16 object-cover rounded border" />
+                    </td>
+                    <td class="border-b px-2 py-1">
+                      {{ img.sort_order }}
+                    </td>
+                    <td class="border-b px-2 py-1 space-x-2 space-x-reverse">
+                      <button class="px-2 py-0.5 text-xs rounded border" @click="startEditImage(img)">
+                        تعديل
+                      </button>
+                      <button class="px-2 py-0.5 text-xs rounded bg-red-600 text-white" @click="deleteImage(img)">
+                        حذف
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="border-t pt-4 mt-4">
+              <h4 class="font-semibold mb-2 text-sm">
+                {{ editingImage ? "تعديل صورة" : "إضافة صورة جديدة" }}
+              </h4>
+              <div class="space-y-3">
+                <div>
+                  <label class="block mb-1 text-sm">الصورة</label>
+                  <input type="file" accept="image/*" @change="onImageFileChange" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-sm">الترتيب</label>
+                  <input v-model.number="imageForm.sort_order" type="number" class="border rounded px-2 py-1 w-32 text-sm" />
+                </div>
+                <div v-if="imagePreview" class="mt-2">
+                  <img :src="imagePreview" alt="" class="w-32 h-32 object-cover rounded border" />
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                  <button class="px-3 py-1 rounded border text-sm" @click="resetImageForm">
+                    تهيئة
+                  </button>
+                  <button class="px-3 py-1 rounded bg-green-600 text-white text-sm" @click="submitImage">
+                    حفظ الصورة
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -864,6 +767,8 @@ const dialog = reactive({
   mode: "create" as "create" | "edit",
   id: null as number | null,
 });
+
+const dialogTab = ref<"form" | "variants" | "images">("form");
 
 const dialogProduct = ref<Product | null>(null);
 
@@ -1083,6 +988,7 @@ const openCreate = () => {
   dialog.mode = "create";
   dialog.id = null;
   dialogProduct.value = null;
+  dialogTab.value = "form";
   resetForm();
   // Ensure brand/category options are aligned with the chosen vendor when opening the dialog
   if (isSuperAdmin.value) {
@@ -1096,6 +1002,7 @@ const openEdit = (p: Product) => {
   dialog.mode = "edit";
   dialog.id = p.id;
   dialogProduct.value = p;
+  dialogTab.value = "form";
   resetForm();
   form.vendor_id = p.vendor_id ?? null;
   form.brand_id = p.brand_id ?? null;
@@ -1117,6 +1024,15 @@ const openEdit = (p: Product) => {
 const closeDialog = () => {
   dialog.open = false;
   dialogProduct.value = null;
+  dialogTab.value = "form";
+  currentProductForVariants.value = null;
+  variants.value = [];
+  resetVariantForm();
+  variantError.value = null;
+  currentProductForImages.value = null;
+  images.value = [];
+  resetImageForm();
+  imageError.value = null;
 };
 
 const addProductProperty = () => {
@@ -1163,7 +1079,11 @@ const submitProduct = async () => {
       dialog.mode = "edit";
       dialog.id = created.id;
       dialogProduct.value = created;
-      // keep the dialog open so user can add images/variants مباشرة
+      // keep the dialog open so user can add images/variants مباشرة داخل نفس النافذة
+      dialogTab.value = "variants";
+      currentProductForVariants.value = created;
+      variants.value = [];
+      await fetchVariants(created.id);
       return;
     } else if (dialog.id != null) {
       const res = await axiosInstance.put(
@@ -1200,6 +1120,24 @@ const submitProduct = async () => {
   }
 };
 
+watch(
+  () => [dialog.open, dialogTab.value, activeDialogProduct.value?.id] as const,
+  async ([open, tab, id]) => {
+    if (!open) return;
+    if (!id) return;
+    const p = activeDialogProduct.value;
+    if (!p) return;
+
+    if (tab === "variants") {
+      currentProductForVariants.value = p;
+      await fetchVariants(p.id);
+    }
+    if (tab === "images") {
+      currentProductForImages.value = p;
+      await fetchImages(p.id);
+    }
+  },
+);
 async function quickCreateBrand() {
   const vendorId = resolveVendorForOptions(form.vendor_id);
   if (!vendorId) {
@@ -1266,7 +1204,6 @@ const formatPrice = (val: number | null): string => {
 };
 
 // Variants state
-const isVariantsDialogOpen = ref(false);
 const currentProductForVariants = ref<Product | null>(null);
 const variants = ref<Variant[]>([]);
 const editingVariant = ref<Variant | null>(null);
@@ -1290,20 +1227,6 @@ const variantForm = ref<{
   is_active: true,
   properties: [],
 });
-
-function openVariantsDialog(product: Product) {
-  currentProductForVariants.value = product;
-  isVariantsDialogOpen.value = true;
-  fetchVariants(product.id);
-}
-
-function closeVariantsDialog() {
-  isVariantsDialogOpen.value = false;
-  currentProductForVariants.value = null;
-  variants.value = [];
-  resetVariantForm();
-  variantError.value = null;
-}
 
 async function fetchVariants(productId: number) {
   try {
@@ -1443,7 +1366,6 @@ async function deleteVariant(v: Variant) {
 }
 
 // Images state
-const isImagesDialogOpen = ref(false);
 const currentProductForImages = ref<Product | null>(null);
 const images = ref<ProductImage[]>([]);
 const editingImage = ref<ProductImage | null>(null);
@@ -1451,20 +1373,6 @@ const imageError = ref<string | null>(null);
 const imageFile = ref<File | null>(null);
 const imagePreview = ref<string | null>(null);
 const imageForm = ref<{ sort_order: number }>({ sort_order: 0 });
-
-function openImagesDialog(p: Product) {
-  currentProductForImages.value = p;
-  isImagesDialogOpen.value = true;
-  fetchImages(p.id);
-}
-
-function closeImagesDialog() {
-  isImagesDialogOpen.value = false;
-  currentProductForImages.value = null;
-  images.value = [];
-  resetImageForm();
-  imageError.value = null;
-}
 
 async function fetchImages(productId: number) {
   try {
