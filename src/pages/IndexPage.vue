@@ -314,6 +314,7 @@ import OffersPage from "@/components/OffersPage.vue";
 import ReviewsPage from "@/components/ReviewsPage.vue";
 // @ts-ignore
 import PreparationOrdersPage from "@/components/PreparationOrdersPage.vue";
+import DeliveryBoyOrdersPage from "@/components/DeliveryBoyOrdersPage.vue";
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -359,6 +360,7 @@ const menuItems = [
   { key: "sales-invoices", label: "فواتير المبيعات", permission: "فواتير المبيعات" },
   { key: "orders", label: "طلبات المتجر", permission: "فواتير المبيعات" },
   { key: "preparation-orders", label: "تجهيز طلبات مودن (اليوم)", permission: "prepare orders" },
+  { key: "delivery-boy-orders", label: "طلبات المندوب (السريع)", permission: "deliver orders" },
   { key: "reports", label: "التقارير", permission: "التقارير" },
   { key: "subscription-plans", label: "خطط الاشتراك", permission: "خطط الاشتراك" },
   { key: "vendor-subscription-requests", label: "طلبات الاشتراك", permission: "طلبات الاشتراك" },
@@ -428,6 +430,7 @@ const menuIcons: Record<string, string> = {
   orders: "📑",
   reports: "📊",
   "preparation-orders": "📦",
+  "delivery-boy-orders": "🛵",
   "subscription-plans": "📅",
   "vendor-subscription-requests": "📨",
   sliders: "🖼",
@@ -562,7 +565,7 @@ const menuGroups = [
   {
     id: "sales",
     label: "المبيعات",
-    items: ["sales", "orders", "sales-invoices", "preparation-orders", "reports"],
+    items: ["sales", "orders", "sales-invoices", "preparation-orders", "delivery-boy-orders", "reports"],
   },
   {
     id: "catalog",
@@ -618,6 +621,8 @@ const currentComponent = computed(() => {
       return OrdersPage;
     case "preparation-orders":
       return PreparationOrdersPage;
+    case "delivery-boy-orders":
+      return DeliveryBoyOrdersPage;
     case "reports":
       return ReportsSection;
     case "subscription-plans":
@@ -681,10 +686,15 @@ watch(
     const isPrep =
       (user.value?.role || "").toString().toLowerCase() === "preparation" ||
       (user.value?.permissions || []).includes("prepare orders");
+    const isDeliveryBoy =
+      (user.value?.role || "").toString().toLowerCase() === "delivery_boy" ||
+      (user.value?.permissions || []).includes("deliver orders");
 
     if (!didSetInitialLanding.value) {
       if (isPrep) {
         activePage.value = "preparation-orders";
+      } else if (isDeliveryBoy) {
+        activePage.value = "delivery-boy-orders";
       }
       didSetInitialLanding.value = true;
     }

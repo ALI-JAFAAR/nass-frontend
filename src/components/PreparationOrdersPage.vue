@@ -7,9 +7,9 @@
           <div class="flex items-center gap-2">
             <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-blue-50 text-blue-700 border border-blue-100">📦</span>
             <div>
-              <h2 class="text-lg font-bold text-gray-900">واجهة التجهيز — طلبات مودن (اليوم)</h2>
+              <h2 class="text-lg font-bold text-gray-900">واجهة التجهيز — طلبات التوصيل (اليوم)</h2>
               <p class="text-xs text-gray-500">
-                عرض طلبات اليوم المرسلة إلى مودن فقط. التعديل والحذف غير متاحين هنا.
+                عرض طلبات اليوم (مودن + توصيل داخلي). التعديل والحذف غير متاحين هنا.
               </p>
             </div>
           </div>
@@ -38,6 +38,15 @@
               <option value="all">الكل</option>
               <option value="unprinted">غير مطبوع</option>
               <option value="printed">مطبوع</option>
+            </select>
+
+            <select
+              v-model="deliveryFilter"
+              class="border rounded-xl px-3 py-2 text-sm bg-white app-border"
+            >
+              <option value="all">كل طرق التوصيل</option>
+              <option value="modon">مودن</option>
+              <option value="nass">توصيل داخلي</option>
             </select>
 
             <button
@@ -119,6 +128,7 @@
               <th class="p-3 border-b">الأصناف</th>
               <th class="p-3 border-b">الإجمالي</th>
               <th class="p-3 border-b">حالة النظام</th>
+              <th class="p-3 border-b">طريقة التوصيل</th>
               <th class="p-3 border-b">Modon ID</th>
               <th class="p-3 border-b">حالة مودن</th>
               <th class="p-3 border-b">الطباعة</th>
@@ -182,10 +192,22 @@
                   {{ o.status ?? "—" }}
                 </span>
               </td>
-              <td class="p-3 font-mono text-xs text-gray-800">{{ o.delivery_external_id ?? "—" }}</td>
+              <td class="p-3">
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-lg text-xs border"
+                  :class="(o.delivery_provider || 'modon') === 'nass'
+                    ? 'bg-slate-50 text-slate-700 border-slate-200'
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'"
+                >
+                  {{ (o.delivery_provider || 'modon') === 'nass' ? 'توصيل داخلي' : 'مودن' }}
+                </span>
+              </td>
+              <td class="p-3 font-mono text-xs text-gray-800">
+                {{ (o.delivery_provider || 'modon') === 'modon' ? (o.delivery_external_id ?? "—") : "—" }}
+              </td>
               <td class="p-3 text-gray-800">
                 <span class="inline-flex items-center px-2 py-1 rounded-lg text-xs border bg-white">
-                  {{ o.modon_status ?? "—" }}
+                  {{ (o.delivery_provider || 'modon') === 'modon' ? (o.modon_status ?? "—") : "—" }}
                 </span>
               </td>
               <td class="p-3">
@@ -229,6 +251,7 @@ const printingId = ref<number | null>(null);
 const selectedSet = ref<Set<number>>(new Set());
 const query = ref<string>("");
 const printFilter = ref<"all" | "printed" | "unprinted">("all");
+const deliveryFilter = ref<"all" | "modon" | "nass">("all");
 
 function formatIqD(value: any): string {
   const n = typeof value === "number" ? value : value ? Number(value) : 0;
@@ -292,7 +315,14 @@ function toggleAll(on: boolean) {
 
 const visibleOrders = computed(() => {
   const q = (query.value || "").trim().toLowerCase();
-  const filteredByPrint = orders.value.filter((o: any) => {
+  const filteredByMethod = orders.value.filter((o: any) => {
+    const p = (o?.delivery_provider ?? "").toString().toLowerCase();
+    if (deliveryFilter.value === "modon") return p === "modon";
+    if (deliveryFilter.value === "nass") return p === "nass";
+    return true;
+  });
+
+  const filteredByPrint = filteredByMethod.filter((o: any) => {
     const isPrinted = !!o?.preparation_printed_at;
     if (printFilter.value === "printed") return isPrinted;
     if (printFilter.value === "unprinted") return !isPrinted;

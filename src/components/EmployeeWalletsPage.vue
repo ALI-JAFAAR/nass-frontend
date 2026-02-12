@@ -129,35 +129,68 @@
             </div>
           </div>
 
-          <div class="rounded-xl border p-4">
-            <div class="flex items-center justify-between">
-              <p class="font-semibold">تسوية / صرف</p>
-              <p class="text-xs text-gray-500">لا يمكن تسوية مبلغ أكبر من الرصيد</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-xl border p-4">
+              <div class="flex items-center justify-between">
+                <p class="font-semibold">تسوية / صرف</p>
+                <p class="text-xs text-gray-500">لا يمكن تسوية مبلغ أكبر من الرصيد الحالي</p>
+              </div>
+              <div class="grid grid-cols-1 gap-3 mt-3">
+                <input
+                  v-model.number="settleAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full border rounded-lg px-3 py-2"
+                  placeholder="المبلغ"
+                />
+                <input
+                  v-model="settleNote"
+                  class="w-full border rounded-lg px-3 py-2"
+                  placeholder="ملاحظة (اختياري)"
+                />
+                <button
+                  class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                  :disabled="settleSubmitting || !settleAmount || settleAmount <= 0"
+                  type="button"
+                  @click="submitSettlement"
+                >
+                  {{ settleSubmitting ? "جاري..." : "تسجيل التسوية" }}
+                </button>
+              </div>
+              <p v-if="walletError" class="text-xs text-red-600 mt-2">{{ walletError }}</p>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-              <input
-                v-model.number="settleAmount"
-                type="number"
-                min="0"
-                step="0.01"
-                class="w-full border rounded-lg px-3 py-2"
-                placeholder="المبلغ"
-              />
-              <input
-                v-model="settleNote"
-                class="w-full border rounded-lg px-3 py-2"
-                placeholder="ملاحظة (اختياري)"
-              />
-              <button
-                class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                :disabled="settleSubmitting || !settleAmount || settleAmount <= 0"
-                type="button"
-                @click="submitSettlement"
-              >
-                {{ settleSubmitting ? "جاري..." : "تسجيل التسوية" }}
-              </button>
+
+            <div class="rounded-xl border p-4">
+              <div class="flex items-center justify-between">
+                <p class="font-semibold">سلفة / قرض</p>
+                <p class="text-xs text-gray-500">يمكن أن يجعل الرصيد أقل من 0 (دين على الموظف)</p>
+              </div>
+              <div class="grid grid-cols-1 gap-3 mt-3">
+                <input
+                  v-model.number="loanAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full border rounded-lg px-3 py-2"
+                  placeholder="مبلغ السلفة"
+                />
+                <input
+                  v-model="loanNote"
+                  class="w-full border rounded-lg px-3 py-2"
+                  placeholder="ملاحظة (اختياري)"
+                />
+                <button
+                  class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                  :disabled="loanSubmitting || !loanAmount || loanAmount <= 0"
+                  type="button"
+                  @click="submitLoan"
+                >
+                  {{ loanSubmitting ? "جاري..." : "تسجيل السلفة" }}
+                </button>
+              </div>
+              <p v-if="loanError" class="text-xs text-red-600 mt-2">{{ loanError }}</p>
             </div>
-            <p v-if="walletError" class="text-xs text-red-600 mt-2">{{ walletError }}</p>
           </div>
 
           <div class="rounded-xl border">
@@ -203,8 +236,10 @@
                     </td>
                     <td class="p-3 font-semibold">{{ t.amount }} د.ع</td>
                     <td class="p-3">
-                      <span v-if="t.source_type === 'pos_order'">طلب #{{ t.source_id }}</span>
+                      <span v-if="t.source_type === 'pos_order'">طلب {{ t.source_id }}</span>
                       <span v-else-if="t.source_type === 'settlement'">تسوية</span>
+                      <span v-else-if="t.source_type === 'salary'">راتب شهري</span>
+                      <span v-else-if="t.source_type === 'loan'">سلفة / قرض</span>
                       <span v-else>{{ t.source_type ?? "—" }}</span>
                     </td>
                     <td class="p-3">{{ t.description ?? "—" }}</td>
@@ -296,6 +331,10 @@ const settleAmount = ref<number | null>(null);
 const settleNote = ref("");
 const settleSubmitting = ref(false);
 const walletError = ref<string>("");
+const loanAmount = ref<number | null>(null);
+const loanNote = ref("");
+const loanSubmitting = ref(false);
+const loanError = ref<string>("");
 
 function walletEndpointForUser(userId: number): string {
   const base = isSuperAdmin.value ? "v1/admin/users" : "v1/vendor/users";
@@ -308,6 +347,9 @@ async function openWallet(u: any) {
   settleAmount.value = null;
   settleNote.value = "";
   walletError.value = "";
+  loanAmount.value = null;
+  loanNote.value = "";
+  loanError.value = "";
   await reloadWallet();
 }
 
@@ -352,6 +394,28 @@ async function submitSettlement() {
     walletError.value = e?.response?.data?.message || "تعذر تسجيل التسوية";
   } finally {
     settleSubmitting.value = false;
+  }
+}
+
+async function submitLoan() {
+  const u = walletUser.value;
+  if (!u?.id) return;
+  const amount = typeof loanAmount.value === "number" ? loanAmount.value : 0;
+  if (!amount || amount <= 0) return;
+
+  loanSubmitting.value = true;
+  loanError.value = "";
+  try {
+    const endpoint = walletEndpointForUser(u.id) + "/loan";
+    await axiosInstance.post(endpoint, { amount, note: loanNote.value || null });
+    loanAmount.value = null;
+    loanNote.value = "";
+    await reloadWallet();
+    await fetchWallets();
+  } catch (e: any) {
+    loanError.value = e?.response?.data?.message || "تعذر تسجيل السلفة";
+  } finally {
+    loanSubmitting.value = false;
   }
 }
 

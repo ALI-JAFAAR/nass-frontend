@@ -165,7 +165,7 @@
               <td class="p-2">
                 <div class="text-gray-700 font-medium">
                   {{ t.source_type || "—" }}
-                  <span v-if="t.source_id" class="text-gray-400">#{{ t.source_id }}</span>
+                  <span v-if="t.source_id" class="text-gray-400">{{ t.source_id }}</span>
                 </div>
               </td>
               <td class="p-2 font-semibold">

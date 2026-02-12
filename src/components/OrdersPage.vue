@@ -285,7 +285,7 @@
             <div>
               <span class="text-xs text-gray-600">رقم الطلب</span>
               <p class="font-semibold">
-                #{{ selectedOrder.id }}
+                {{ selectedOrder.id }}
               </p>
             </div>
             <div>
@@ -393,6 +393,64 @@
 
             <div v-if="selectedOrder.delivery_error" class="mt-3 text-xs text-red-700">
               {{ selectedOrder.delivery_error }}
+            </div>
+          </div>
+
+          <!-- Fast/internal delivery assignment -->
+          <div class="rounded-lg border p-4 bg-blue-50/40">
+            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h4 class="font-semibold text-sm">توصيل سريع (مندوب الشركة)</h4>
+                <p class="text-xs text-gray-600 mt-1">
+                  يمكنك تحويل الطلب إلى توصيل داخلي وتعيينه لمندوب. لا يتم الإرسال إلى مودن.
+                </p>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <select v-model.number="fastBoyId" class="border rounded px-2 py-2 text-sm bg-white min-w-[220px]">
+                  <option :value="0">اختر المندوب (Delivery boy)</option>
+                  <option v-for="u in deliveryBoys" :key="u.id" :value="u.id">
+                    {{ u.name || u.username }} — {{ u.commission_type ? (u.commission_type === 'percent' ? (u.commission_value + '%') : (u.commission_value + ' د.ع')) : 'بدون عمولة' }}
+                  </option>
+                </select>
+                <button
+                  class="px-3 py-2 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:opacity-50"
+                  type="button"
+                  :disabled="fastBusy || !selectedOrder"
+                  @click="assignFast(false)"
+                >
+                  تعيين سريع
+                </button>
+                <button
+                  class="px-3 py-2 rounded bg-amber-600 text-white text-xs hover:bg-amber-700 disabled:opacity-50"
+                  type="button"
+                  :disabled="fastBusy || !selectedOrder"
+                  @click="assignFast(true)"
+                >
+                  تحويل من مودن إلى سريع
+                </button>
+                <button
+                  class="px-3 py-2 rounded bg-emerald-600 text-white text-xs hover:bg-emerald-700 disabled:opacity-50"
+                  type="button"
+                  :disabled="fastBusy || !selectedOrder"
+                  @click="settleFast()"
+                >
+                  تسوية (إضافة عمولة المندوب)
+                </button>
+              </div>
+            </div>
+            <div class="mt-3 text-xs text-gray-700">
+              <div>
+                <span class="text-gray-500">المندوب الحالي:</span>
+                <span class="font-semibold">
+                  {{ (selectedOrder as any).fast_delivery_boy_id ? ((selectedOrder as any).fast_delivery_boy_id) : "—" }}
+                </span>
+              </div>
+              <div class="mt-1">
+                <span class="text-gray-500">التسليم:</span>
+                <span class="font-semibold">{{ (selectedOrder as any).fast_delivered_at ? "تم" : "—" }}</span>
+                <span class="text-gray-500 mr-3">التسوية:</span>
+                <span class="font-semibold">{{ (selectedOrder as any).fast_settled_at ? "تم" : "—" }}</span>
+              </div>
             </div>
           </div>
 
@@ -558,6 +616,9 @@ const saving = ref(false);
 const statuses = ["pending", "confirmed", "suspended", "shipped", "delivered", "cancelled"];
 
 const suspendedNoteDraft = ref<string>("");
+const deliveryBoys = ref<any[]>([]);
+const fastBoyId = ref<number>(0);
+const fastBusy = ref(false);
 
 const whatsappTemplate = ref<string>("");
 
@@ -692,9 +753,67 @@ async function openOrder(order: Order) {
     selectedOrder.value = full;
     statusDraft.value = full.status;
     suspendedNoteDraft.value = (full.suspended_note as any) || "";
+    await loadDeliveryBoys();
+    fastBoyId.value = 0;
   } catch (e) {
     console.error(e);
     alert("تعذر تحميل تفاصيل الطلب");
+  }
+}
+
+async function loadDeliveryBoys() {
+  try {
+    const res = await axiosInstance.get("v1/cashier/fast-delivery/delivery-boys");
+    deliveryBoys.value = Array.isArray(res.data?.data) ? res.data.data : [];
+  } catch {
+    deliveryBoys.value = [];
+  }
+}
+
+async function assignFast(convertFromModon: boolean) {
+  if (!selectedOrder.value) return;
+  fastBusy.value = true;
+  try {
+    const endpoint = convertFromModon
+      ? `v1/cashier/orders/${selectedOrder.value.id}/fast/convert`
+      : `v1/cashier/orders/${selectedOrder.value.id}/fast/assign`;
+    const payload =
+      fastBoyId.value && fastBoyId.value > 0
+        ? { delivery_boy_id: fastBoyId.value }
+        : { delivery_boy_id: null };
+    const res = await axiosInstance.post(endpoint, payload);
+    if (res.data?.order) {
+      selectedOrder.value = res.data.order;
+    } else {
+      const full = await axiosInstance.get(`cashier/orders/${selectedOrder.value.id}`);
+      selectedOrder.value = full.data;
+    }
+    alert(convertFromModon ? "تم تحويل الطلب إلى سريع." : "تم تعيين الطلب كمندوب سريع.");
+  } catch (e: any) {
+    alert(e?.response?.data?.message || "تعذر تنفيذ العملية.");
+  } finally {
+    fastBusy.value = false;
+  }
+}
+
+async function settleFast() {
+  if (!selectedOrder.value) return;
+  fastBusy.value = true;
+  try {
+    const res = await axiosInstance.post(
+      `v1/cashier/orders/${selectedOrder.value.id}/fast/settle`,
+    );
+    if (res.data?.order) {
+      selectedOrder.value = res.data.order;
+    } else {
+      const full = await axiosInstance.get(`cashier/orders/${selectedOrder.value.id}`);
+      selectedOrder.value = full.data;
+    }
+    alert("تم تسجيل التسوية وإضافة عمولة المندوب (إن وجدت).");
+  } catch (e: any) {
+    alert(e?.response?.data?.message || "تعذر تنفيذ التسوية.");
+  } finally {
+    fastBusy.value = false;
   }
 }
 
@@ -705,7 +824,16 @@ async function saveStatus() {
     const payload: any = { status: statusDraft.value };
     if (statusDraft.value === "confirmed") {
       // City/region must already be selected in the employee app.
-      if (!selectedOrder.value.delivery_city_id || !selectedOrder.value.delivery_region_id) {
+      const provider = (selectedOrder.value as any)?.delivery_provider as
+        | "modon"
+        | "nass"
+        | undefined
+        | null;
+      const requiresModonLocation = provider !== "nass"; // default/legacy => modon
+      if (
+        requiresModonLocation &&
+        (!selectedOrder.value.delivery_city_id || !selectedOrder.value.delivery_region_id)
+      ) {
         alert("لا يمكن تأكيد الطلب بدون مدينة/منطقة مودن. يرجى اختيارها من تطبيق الموظف أولاً.");
         saving.value = false;
         return;

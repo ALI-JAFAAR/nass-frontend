@@ -531,7 +531,7 @@
                       {{ t.amount }} د.ع
                     </td>
                     <td class="p-3">
-                      <span v-if="t.source_type === 'pos_order'">طلب #{{ t.source_id }}</span>
+                      <span v-if="t.source_type === 'pos_order'">طلب {{ t.source_id }}</span>
                       <span v-else-if="t.source_type === 'settlement'">تسوية</span>
                       <span v-else>{{ t.source_type ?? "—" }}</span>
                     </td>
@@ -593,7 +593,8 @@ const userForm = ref({
 
 const isEmployeeRole = computed(() => {
   const r = (userForm.value.role || "").toString().trim().toLowerCase();
-  return r === "employee";
+  // Employee-like roles that can have salary + commission
+  return r === "employee" || r === "delivery_boy";
 });
 
 const isPreparationRole = computed(() => {
@@ -617,7 +618,7 @@ function getRoleNames(u: any): string[] {
 function isSalaryUser(u: any): boolean {
   const byRole = getRoleNames(u).some((n) => {
     const rn = n.toLowerCase();
-    return rn === "employee" || rn === "preparation";
+    return rn === "employee" || rn === "delivery_boy" || rn === "preparation";
   });
   // Fallback: some APIs may not return roles (team-scoped roles), but the
   // compensation fields are still returned and should display.
@@ -630,17 +631,24 @@ function isSalaryUser(u: any): boolean {
 }
 
 function isCommissionUser(u: any): boolean {
-  // Commission is only for employee (preparation is salary-only)
-  return getRoleNames(u).some((n) => n.toLowerCase() === "employee");
+  // Commission is for employee/delivery_boy (preparation is salary-only)
+  return getRoleNames(u).some((n) => {
+    const rn = n.toLowerCase();
+    return rn === "employee" || rn === "delivery_boy";
+  });
 }
 
 function isEmployeeUser(u: any): boolean {
   // Used for employee-only UI actions (wallet, etc.)
-  const byRole = getRoleNames(u).some((n) => n.toLowerCase() === "employee");
+  const byRole = getRoleNames(u).some((n) => {
+    const rn = n.toLowerCase();
+    return rn === "employee" || rn === "delivery_boy";
+  });
   const hasCommission =
     (u?.commission_type ?? "") !== "" ||
     (u?.commission_value !== null && u?.commission_value !== undefined);
-  return byRole || hasCommission;
+  const hasSalary = u?.salary !== null && u?.salary !== undefined;
+  return byRole || hasSalary || hasCommission;
 }
 
 const isPermDialogOpen = ref(false); // kept for parity, not used in UI
