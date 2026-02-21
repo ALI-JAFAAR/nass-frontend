@@ -671,13 +671,23 @@ function renderWhatsAppMessage(order: Order): string {
   if (!tpl) {
     // Fallback if template not configured yet
     return [
-      `طلب رقم: #${map.order_id}`,
-      `الاسم: ${map.customer_name}`,
-      `الهاتف: ${map.customer_phone}`,
-      `المدينة/المنطقة: ${map.city} - ${map.region}`,
-      `العنوان: ${map.address}`,
-      `الإجمالي: ${map.total}`,
-      `الأصناف:\n${map.items}`,
+      "السلام عليكم ورحمة الله وبركاته",
+      "",
+      "يرجى التفضّل بتأكيد معلومات الطلب المسجلة أدناه،",
+      "وذلك لغرض المباشرة بتجهيز طلبكم من وكالة ناس:",
+      `	•	الاسم: ${map.customer_name}`,
+      `	•	رقم الهاتف: ${map.customer_phone}`,
+      `	•	العنوان: ${map.address}`,
+      `	•	المنتج: ${map.items}`,
+      `	•	السعر: ${map.total} دينار`,
+      "",
+      "بعد تأكيدكم، سيتم تجهيز الطلب وإرساله خلال 24–48 ساعة،",
+      "وسيتواصل معكم مندوب التوصيل قبل الوصول.",
+      "",
+      "شاكرين تعاونكم وثقتكم بـ وكالة ناس.",
+      "",
+      "مع فائق الاحترام",
+      "قسم تنسيق الطلبات – وكالة ناس",
     ].join("\n");
   }
   return tpl.replace(/\{(\w+)\}/g, (_, key) => (map[key] ?? ""));
