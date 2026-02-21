@@ -1,9 +1,17 @@
 import axios from "axios";
 
+function normalizeBaseUrl(u: string) {
+  if (!u) return u;
+  return u.endsWith("/") ? u : u + "/";
+}
+
 const instance = axios.create({
 
-  baseURL:"http://127.0.0.1:8000/api/",
-  // baseURL:"https://nassiq.com/backend/public/api/",
+  // Configure via Vite env:
+  // - local:  VITE_API_BASE_URL="http://127.0.0.1:8000/api/"
+  // - prod:   VITE_API_BASE_URL="https://nassiq.com/backend/public/api/"
+  // baseURL: normalizeBaseUrl("http://127.0.0.1:8000/api/"),
+  baseURL: normalizeBaseUrl("https://nassiq.com/backend/public/api/"),
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",

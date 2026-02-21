@@ -8,6 +8,7 @@
         </p>
       </div>
       <button
+        v-if="canManageUsers"
         class="px-4 py-2 rounded bg-blue-600 text-white text-sm"
         type="button"
         @click="fetchWallets"
@@ -71,7 +72,12 @@
         </template>
 
         <template #cell-actions="{ item }">
-          <button class="px-3 py-1 border rounded text-xs" type="button" @click="openWallet(item)">
+          <button
+            v-if="canManageUsers"
+            class="px-3 py-1 border rounded text-xs"
+            type="button"
+            @click="openWallet(item)"
+          >
             فتح
           </button>
         </template>
@@ -150,6 +156,7 @@
                   placeholder="ملاحظة (اختياري)"
                 />
                 <button
+                  v-if="canManageUsers"
                   class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                   :disabled="settleSubmitting || !settleAmount || settleAmount <= 0"
                   type="button"
@@ -181,6 +188,7 @@
                   placeholder="ملاحظة (اختياري)"
                 />
                 <button
+                  v-if="canManageUsers"
                   class="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
                   :disabled="loanSubmitting || !loanAmount || loanAmount <= 0"
                   type="button"
@@ -197,13 +205,28 @@
             <div class="px-4 py-3 border-b flex items-center justify-between">
               <p class="font-semibold">الحركات</p>
               <div class="flex items-center gap-2">
-                <button class="text-xs px-3 py-1 rounded border" type="button" @click="exportSettlementsCsv">
+                <button
+                  v-if="canManageUsers"
+                  class="text-xs px-3 py-1 rounded border"
+                  type="button"
+                  @click="exportSettlementsCsv"
+                >
                   تصدير التسويات (Excel)
                 </button>
-                <button class="text-xs px-3 py-1 rounded border" type="button" @click="recalculateWallet">
+                <button
+                  v-if="canManageUsers"
+                  class="text-xs px-3 py-1 rounded border"
+                  type="button"
+                  @click="recalculateWallet"
+                >
                   إعادة احتساب (هذا الشهر)
                 </button>
-                <button class="text-xs px-3 py-1 rounded border" type="button" @click="reloadWallet">
+                <button
+                  v-if="canManageUsers"
+                  class="text-xs px-3 py-1 rounded border"
+                  type="button"
+                  @click="reloadWallet"
+                >
                   تحديث
                 </button>
               </div>
@@ -264,6 +287,17 @@ import { downloadCsv } from "@/utils/csv";
 
 const auth = useAuthStore();
 const isSuperAdmin = computed(() => !auth.user?.vendor_id);
+
+const myPermissions = computed<string[]>(() => {
+  const p = auth.user?.permissions;
+  return Array.isArray(p) ? (p as string[]) : [];
+});
+
+const canManageUsers = computed(
+  () =>
+    myPermissions.value.includes("المستخدمين") ||
+    myPermissions.value.includes("manage users"),
+);
 
 const vendors = ref<any[]>([]);
 const selectedVendorId = ref<number>(Number(localStorage.getItem("vendor_id") || 0));

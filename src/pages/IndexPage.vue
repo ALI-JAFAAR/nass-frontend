@@ -315,6 +315,10 @@ import ReviewsPage from "@/components/ReviewsPage.vue";
 // @ts-ignore
 import PreparationOrdersPage from "@/components/PreparationOrdersPage.vue";
 import DeliveryBoyOrdersPage from "@/components/DeliveryBoyOrdersPage.vue";
+import BrokenItemsPage from "@/components/BrokenItemsPage.vue";
+import AgencyPricingPage from "@/components/AgencyPricingPage.vue";
+import AgencyOrdersPage from "@/components/AgencyOrdersPage.vue";
+import AgencySettlementsPage from "@/components/AgencySettlementsPage.vue";
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -361,13 +365,17 @@ const menuItems = [
   { key: "orders", label: "طلبات المتجر", permission: "فواتير المبيعات" },
   { key: "preparation-orders", label: "تجهيز طلبات مودن (اليوم)", permission: "prepare orders" },
   { key: "delivery-boy-orders", label: "طلبات المندوب (السريع)", permission: "deliver orders" },
+  { key: "broken-items", label: "الأجهزة التالفة (الصيانة)", permission: "prepare orders" },
+  { key: "agency-orders", label: "طلبات الوكالة", permission: "agency orders" },
+  { key: "agency-pricing", label: "تسعير منتجات الوكالة", permission: "agency pricing" },
+  { key: "agency-settlements", label: "تسويات الوكالة", permission: "agency settlements" },
   { key: "reports", label: "التقارير", permission: "التقارير" },
   { key: "subscription-plans", label: "خطط الاشتراك", permission: "خطط الاشتراك" },
   { key: "vendor-subscription-requests", label: "طلبات الاشتراك", permission: "طلبات الاشتراك" },
   { key: "sliders", label: "الإعلانات", permission: "تعريف المنتجات" },
   { key: "brands", label: "البراندات", permission: "تعريف المنتجات" },
   { key: "categories", label: "الأقسام", permission: "تعريف المنتجات" },
-  { key: "shops", label: "المحلات", permission: "إدارة المحلات" },
+  { key: "shops", label: "المحلات", permission: "إدارة المحلات", altPermission: "تعديل المحلات" },
   { key: "users", label: "المستخدمين", permission: "المستخدمين" },
   { key: "employee-wallets", label: "محافظ الموظفين", permission: "المستخدمين" },
   { key: "delivery-wallet", label: "محفظة التوصيل", permission: "محفظة التوصيل" },
@@ -400,9 +408,35 @@ const filteredMenuItems = computed(() =>
     if (!item.permission) {
       return true;
     }
-    // Users page accessible to vendor admins or permission holders
-    if (item.key === "users" || item.key === "employee-wallets" || item.key === "delivery-wallet") {
-      return hasPermission(item.permission) || isVendorAdmin.value;
+
+    // UX polish: reseller vendors should focus on the agency flow only.
+    // Hide standard vendor pages to avoid confusion.
+    const isReseller = user.value?.vendor_type === "reseller";
+    if (isReseller) {
+      const hiddenForReseller = new Set([
+        "products",
+        "brands",
+        "categories",
+        "sliders",
+        "offers",
+        "reviews",
+        "invoices",
+        "sales-invoices",
+        "orders",
+        "users",
+        "employee-wallets",
+        "delivery-wallet",
+        "subscription-plans",
+        "vendor-subscription-requests",
+        "reports",
+        "governorates",
+        "shipping-fees",
+        "social-settings",
+        "app-themes",
+      ]);
+      if (hiddenForReseller.has(item.key)) {
+        return false;
+      }
     }
 
     // Sliders and configuration pages are managed only by the super admin
@@ -418,7 +452,17 @@ const filteredMenuItems = computed(() =>
       return isSuperAdmin.value;
     }
 
-    return hasPermission(item.permission);
+    // Agency tools visibility depends on vendor type
+    if (item.key === "agency-pricing" || item.key === "agency-orders") {
+      return user.value?.vendor_type === "reseller" && hasPermission(item.permission);
+    }
+    if (item.key === "agency-settlements") {
+      return user.value?.vendor_type === "agency" && hasPermission(item.permission);
+    }
+
+    const perm = hasPermission(item.permission);
+    const alt = (item as { altPermission?: string }).altPermission;
+    return perm || (!!alt && hasPermission(alt));
   })
 );
 
@@ -431,6 +475,10 @@ const menuIcons: Record<string, string> = {
   reports: "📊",
   "preparation-orders": "📦",
   "delivery-boy-orders": "🛵",
+  "broken-items": "🧰",
+  "agency-orders": "📦",
+  "agency-pricing": "🏷",
+  "agency-settlements": "🧾",
   "subscription-plans": "📅",
   "vendor-subscription-requests": "📨",
   sliders: "🖼",
@@ -565,7 +613,7 @@ const menuGroups = [
   {
     id: "sales",
     label: "المبيعات",
-    items: ["sales", "orders", "sales-invoices", "preparation-orders", "delivery-boy-orders", "reports"],
+    items: ["sales", "orders", "sales-invoices", "preparation-orders", "broken-items", "delivery-boy-orders", "agency-orders", "agency-pricing", "agency-settlements", "reports"],
   },
   {
     id: "catalog",
@@ -623,6 +671,14 @@ const currentComponent = computed(() => {
       return PreparationOrdersPage;
     case "delivery-boy-orders":
       return DeliveryBoyOrdersPage;
+    case "broken-items":
+      return BrokenItemsPage;
+    case "agency-orders":
+      return AgencyOrdersPage;
+    case "agency-pricing":
+      return AgencyPricingPage;
+    case "agency-settlements":
+      return AgencySettlementsPage;
     case "reports":
       return ReportsSection;
     case "subscription-plans":
@@ -689,12 +745,15 @@ watch(
     const isDeliveryBoy =
       (user.value?.role || "").toString().toLowerCase() === "delivery_boy" ||
       (user.value?.permissions || []).includes("deliver orders");
+    const isResellerVendor = user.value?.vendor_type === "reseller";
 
     if (!didSetInitialLanding.value) {
       if (isPrep) {
         activePage.value = "preparation-orders";
       } else if (isDeliveryBoy) {
         activePage.value = "delivery-boy-orders";
+      } else if (isResellerVendor) {
+        activePage.value = "agency-orders";
       }
       didSetInitialLanding.value = true;
     }

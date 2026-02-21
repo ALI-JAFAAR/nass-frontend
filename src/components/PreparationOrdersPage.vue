@@ -50,6 +50,7 @@
             </select>
 
             <button
+              v-if="canPrepareOrders"
               class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm disabled:opacity-60 shadow-sm"
               :disabled="loading"
               type="button"
@@ -67,6 +68,7 @@
             </div>
 
             <button
+              v-if="canPrepareOrders"
               class="px-3 py-2 rounded-xl border text-sm bg-white hover:bg-gray-50 disabled:opacity-60 app-border"
               :disabled="loading || !visibleOrders.length"
               type="button"
@@ -77,6 +79,7 @@
             </button>
 
             <button
+              v-if="canPrepareOrders"
               class="px-3 py-2 rounded-xl border text-sm bg-white hover:bg-gray-50 disabled:opacity-60 app-border"
               :disabled="loading || !selectedIds.length"
               type="button"
@@ -86,6 +89,7 @@
             </button>
 
             <button
+              v-if="canPrepareOrders"
               class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm disabled:opacity-60 shadow-sm"
               :disabled="loading || !selectedIds.length"
               type="button"
@@ -95,6 +99,7 @@
             </button>
 
             <button
+              v-if="canPrepareOrders"
               class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm disabled:opacity-60 shadow-sm"
               :disabled="loading || !visibleOrders.length"
               type="button"
@@ -223,6 +228,7 @@
               </td>
               <td class="p-3 text-center">
                 <button
+                  v-if="canPrepareOrders"
                   class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs disabled:opacity-60 shadow-sm"
                   type="button"
                   :disabled="printingId === o.id"
@@ -243,6 +249,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import axiosInstance from "@/api/axios";
+import { useAuthStore } from "@/stores/auth";
+
+const auth = useAuthStore();
+const myPermissions = computed<string[]>(() => {
+  const p = auth.user?.permissions;
+  return Array.isArray(p) ? (p as string[]) : [];
+});
+const canPrepareOrders = computed(() => myPermissions.value.includes("prepare orders"));
 
 const orders = ref<any[]>([]);
 const loading = ref(false);

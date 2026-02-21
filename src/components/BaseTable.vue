@@ -146,9 +146,8 @@ const emit = defineEmits<{
   }): void;
 }>();
 
-// Always show global search and column filters as requested.
-const enableGlobalSearch = computed(() => true);
-const enableColumnFilters = computed(() => true);
+const enableGlobalSearch = computed(() => props.enableGlobalSearch ?? true);
+const enableColumnFilters = computed(() => props.enableColumnFilters ?? true);
 
 const localGlobalSearch = ref(props.globalSearch ?? "");
 const localColumnFilters = ref<Record<string, string>>({

@@ -39,6 +39,16 @@
             دخول
           </button>
         </form>
+
+        <div class="mt-4 text-center">
+          <button
+            type="button"
+            class="text-sm text-blue-700 hover:text-blue-900 underline"
+            @click="router.push({ name: 'signup' })"
+          >
+            إنشاء حساب جديد
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -89,6 +99,8 @@ const handleLogin = async () => {
       name: res.data.user.name,
       username: res.data.user.username,
       vendor_id: res.data.user.vendor_id,
+      vendor_type: res.data.user.vendor_type,
+      agency_vendor_id: res.data.user.agency_vendor_id,
       role: res.data.user.role,
       permissions: res.data.user.permissions,
       shop_id: res.data.user.shop_id,

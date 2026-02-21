@@ -1,134 +1,169 @@
 <template>
-  <div class="space-y-4">
+  <div class="space-y-6">
     <!-- Header -->
-    <div class="flex justify-between items-center">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
-      <h2 class="text-2xl font-bold text-blue-800">إدارة المنتجات</h2>
-        <p class="text-xs text-gray-500">
-          هذه الشاشة تعكس نفس الحقول والعلاقات الموجودة في لوحة Filament.
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--app-text)]">
+          إدارة المنتجات
+        </h1>
+        <p class="mt-1 text-sm text-[var(--app-text-muted)] max-w-xl">
+          إدارة كاملة للمنتجات والخصائص والصور — يتزامن مع لوحة Filament
         </p>
       </div>
       <button
         v-if="hasPermission('تعريف المنتجات')"
-        class="px-4 py-2 rounded text-white bg-gradient-to-r from-blue-500 to-purple-500"
+        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/20 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/25 hover:-translate-y-0.5 active:translate-y-0"
         @click="openCreate"
       >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
         منتج جديد
       </button>
     </div>
 
     <!-- Filters -->
-    <div class="bg-white rounded-lg border p-3 flex flex-wrap gap-3 items-end">
-      <div>
-        <label class="block text-xs text-gray-600 mb-1">بحث باسم المنتج</label>
+    <div class="rounded-2xl border bg-[var(--app-surface)] p-4 sm:p-5 shadow-sm app-border">
+      <div class="flex flex-col sm:flex-row flex-wrap gap-4 sm:items-end">
+        <div class="flex-1 min-w-[200px]">
+          <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1.5">بحث باسم المنتج</label>
           <input
-          v-model="filters.search"
-          type="text"
+            v-model="filters.search"
+            type="text"
             placeholder="ابحث عن المنتجات..."
-          class="border rounded px-2 py-1 text-sm w-56"
-          @keyup.enter="fetchProducts"
+            class="w-full sm:w-64 border rounded-xl px-3 py-2.5 text-sm bg-[#f9fafb] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors app-border"
+            @keyup.enter="fetchProducts"
           />
         </div>
-      <div v-if="isSuperAdmin">
-        <label class="block text-xs text-gray-600 mb-1">المحل</label>
-        <select
-          v-model.number="filters.vendorId"
-          class="border rounded px-2 py-1 text-sm w-56"
-        >
-          <option :value="0">كل المحلات</option>
-          <option
-            v-for="v in vendors"
-            :key="v.id"
-            :value="v.id"
+        <div v-if="isSuperAdmin" class="min-w-[180px]">
+          <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1.5">المحل</label>
+          <select
+            v-model.number="filters.vendorId"
+            class="w-full sm:w-56 border rounded-xl px-3 py-2.5 text-sm bg-[#f9fafb] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors app-border"
           >
-            {{ v.name }}
-          </option>
-        </select>
-      </div>
-      <div class="ml-auto flex gap-2">
+            <option :value="0">كل المحلات</option>
+            <option
+              v-for="v in vendors"
+              :key="v.id"
+              :value="v.id"
+            >
+              {{ v.name }}
+            </option>
+          </select>
+        </div>
         <button
-          class="px-3 py-1 rounded bg-gray-100 text-sm"
+          class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border app-border bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-[var(--app-surface-muted)] transition-colors"
           @click="fetchProducts"
         >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
           تحديث
         </button>
       </div>
     </div>
 
     <!-- Products table -->
-    <div class="bg-white rounded-lg border overflow-x-auto">
+    <div class="rounded-2xl border overflow-hidden bg-[var(--app-surface)] shadow-sm app-border">
       <BaseTable
         :columns="productTableColumns"
         :items="filtered"
         :loading="loading"
-        :search-columns="['name', 'brand', 'categories']"
-        empty-text="لا توجد منتجات."
+        :enable-global-search="false"
+        :enable-column-filters="false"
+        empty-text="لا توجد منتجات لعرضها."
       >
         <template #cell-index="{ index }">
-          {{ (pagination.current - 1) * pagination.perPage + index + 1 }}
+          <span class="text-[var(--app-text-muted)] font-medium">
+            {{ (pagination.current - 1) * pagination.perPage + index + 1 }}
+          </span>
         </template>
 
         <template #cell-first_image_url="{ item }">
-          <img
-            v-if="item.first_image_url"
-            :src="item.first_image_url"
-            :alt="item.name"
-            class="w-12 h-12 object-cover rounded-full border"
-          />
+          <div class="flex items-center justify-center">
+            <div
+              v-if="item.first_image_url"
+              class="w-12 h-12 rounded-xl overflow-hidden border app-border shadow-sm flex-shrink-0"
+            >
+              <img
+                :src="item.first_image_url"
+                :alt="item.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <div
+              v-else
+              class="w-12 h-12 rounded-xl bg-[var(--app-surface-muted)] flex items-center justify-center text-[var(--app-text-muted)]"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
         </template>
 
         <template #cell-name="{ item }">
-          {{ item.name }}
+          <span class="font-medium text-[var(--app-text)] line-clamp-2">{{ item.name }}</span>
         </template>
 
         <template #cell-brand="{ item }">
-          {{ item.brand?.name ?? "—" }}
+          <span class="text-[var(--app-text-muted)] text-sm">{{ item.brand?.name ?? "—" }}</span>
         </template>
 
         <template #cell-categories="{ item }">
-          <span class="max-w-xs truncate block">
+          <span class="max-w-[140px] truncate block text-sm text-[var(--app-text-muted)]">
             {{ item.categories?.map((c: any) => c.name).join(", ") || "—" }}
           </span>
         </template>
 
         <template #cell-price="{ item }">
-          {{ formatPrice(firstVariantPrice(item)) }}
+          <span class="font-semibold text-[var(--app-text)]">{{ formatPrice(firstVariantPrice(item)) }}</span>
         </template>
 
         <template #cell-stock="{ item }">
-          {{ item.stock }}
+          <span class="text-sm" :class="item.stock > 0 ? 'text-[var(--app-text)]' : 'text-amber-600'">
+            {{ item.stock }}
+          </span>
         </template>
 
         <template #cell-is_active="{ item }">
           <span
-            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
-            :class="item.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+            class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium"
+            :class="item.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'"
           >
-            {{ item.is_active ? "نعم" : "لا" }}
+            {{ item.is_active ? "مفعل" : "معطل" }}
           </span>
         </template>
 
         <template #cell-featured="{ item }">
           <span
-            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
-            :class="item.featured ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'"
+            class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium"
+            :class="item.featured ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
           >
-            {{ item.featured ? "نعم" : "لا" }}
+            {{ item.featured ? "مميز" : "—" }}
           </span>
         </template>
 
         <template #cell-actions="{ item }">
-          <div class="space-x-2 space-x-reverse">
+          <div class="flex items-center gap-2 justify-center">
             <button
-              class="px-2 py-0.5 text-xs rounded border"
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border app-border bg-[var(--app-surface)] text-[var(--app-text)] hover:bg-blue-50 hover:border-blue-300 transition-colors"
               @click="openEdit(item)"
+              title="تعديل"
             >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
               تعديل
             </button>
             <button
-              class="px-2 py-0.5 text-xs rounded bg-red-600 text-white"
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
               @click="confirmDelete(item)"
+              title="حذف"
             >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
               حذف
             </button>
           </div>
@@ -139,97 +174,88 @@
     <!-- Pagination -->
     <div
       v-if="pagination.total > pagination.perPage"
-      class="flex items-center justify-between text-xs mt-2"
+      class="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 rounded-xl border app-border bg-[var(--app-surface)]"
     >
-      <div>
-        عرض
-        {{ pagination.from }}
-        -
-        {{ pagination.to }}
-        من
-        {{ pagination.total }}
-        </div>
-      <div class="space-x-2 space-x-reverse">
+      <p class="text-sm text-[var(--app-text-muted)]">
+        عرض <span class="font-medium text-[var(--app-text)]">{{ pagination.from }}</span>
+        –
+        <span class="font-medium text-[var(--app-text)]">{{ pagination.to }}</span>
+        من <span class="font-medium text-[var(--app-text)]">{{ pagination.total }}</span>
+      </p>
+      <div class="flex items-center gap-2">
         <button
-          class="px-2 py-1 border rounded"
+          class="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border app-border disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--app-surface)] hover:bg-[var(--app-surface-muted)] transition-colors"
           :disabled="!pagination.prev"
           @click="changePage(pagination.current - 1)"
         >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
           السابق
         </button>
         <button
-          class="px-2 py-1 border rounded"
+          class="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border app-border disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--app-surface)] hover:bg-[var(--app-surface-muted)] transition-colors"
           :disabled="!pagination.next"
           @click="changePage(pagination.current + 1)"
         >
           التالي
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       </div>
     </div>
 
     <!-- Product form dialog -->
-    <div
-      v-if="dialog.open"
-      class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-      @click.self="closeDialog"
-    >
-      <div
-        class="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5"
-        dir="rtl"
-      >
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-semibold">
-            {{ dialog.mode === "create" ? "إضافة منتج" : "تعديل منتج" }}
-        </h3>
-          <button class="text-gray-500" @click="closeDialog">✕</button>
-        </div>
-
-        <!-- Tabs: keep everything in one dialog -->
-        <div class="flex flex-wrap gap-2 mb-4">
-          <button
-            type="button"
-            class="px-3 py-2 rounded border text-sm"
-            :class="dialogTab === 'form' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'"
-            @click="dialogTab = 'form'"
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="dialog.open"
+          class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          @click.self="closeDialog"
+        >
+          <div
+            class="bg-[var(--app-surface)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border app-border"
+            dir="rtl"
           >
-            بيانات المنتج
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded border text-sm disabled:opacity-60"
-            :class="dialogTab === 'variants' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'"
-            :disabled="!activeDialogProduct"
-            @click="dialogTab = 'variants'"
-          >
-            الخصائص
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 rounded border text-sm disabled:opacity-60"
-            :class="dialogTab === 'images' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-gray-50'"
-            :disabled="!activeDialogProduct"
-            @click="dialogTab = 'images'"
-          >
-            الصور
-          </button>
+            <!-- Dialog header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b app-border bg-[var(--app-surface-muted)]/50">
+              <h3 class="text-xl font-semibold text-[var(--app-text)]">
+                {{ dialog.mode === "create" ? "إضافة منتج جديد" : "تعديل المنتج" }}
+              </h3>
+              <button
+                class="p-2 rounded-xl text-[var(--app-text-muted)] hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)] transition-colors"
+                @click="closeDialog"
+                aria-label="إغلاق"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-          <div v-if="!activeDialogProduct" class="text-xs text-gray-500 flex items-center">
-            احفظ المنتج أولاً لتفعيل (الخصائص/الصور).
-          </div>
-        </div>
+            <!-- Error banner -->
+            <div v-if="formErrors.global" class="mx-6 mt-4 p-3 rounded-xl bg-red-50 text-red-700 text-sm border border-red-200">
+              {{ formErrors.global }}
+            </div>
 
-        <div v-if="formErrors.global" class="text-red-600 text-sm mb-2">
-          {{ formErrors.global }}
-        </div>
+            <!-- Scrollable form body -->
+            <div class="overflow-y-auto flex-1 px-6 py-5">
 
-        <div v-if="dialogTab === 'form'">
-        <form class="space-y-4" @submit.prevent="submitProduct">
+        <!-- Single scrollable form: product + variants + images -->
+        <form id="product-form" class="space-y-6" @submit.prevent="submitProduct">
+          <!-- Basic info -->
+          <div class="space-y-4">
+            <h4 class="text-sm font-semibold text-[var(--app-text)] flex items-center gap-2">
+              <span class="w-1 h-4 rounded-full bg-blue-500"></span>
+              بيانات أساسية
+            </h4>
           <div class="grid md:grid-cols-2 gap-4">
             <div v-if="isSuperAdmin">
-              <label class="block mb-1 text-sm">المحل</label>
+              <label class="block mb-1.5 text-sm font-medium text-[var(--app-text-muted)]">المحل</label>
               <select
                 v-model="form.vendor_id"
-                class="border rounded px-2 py-1 w-full text-sm"
+                class="input-field w-full"
               >
                 <option :value="null">اختر المحل</option>
                 <option
@@ -242,30 +268,30 @@
               </select>
             </div>
           <div>
-            <label class="block mb-1 text-sm">اسم المنتج *</label>
+            <label class="block mb-1.5 text-sm font-medium text-[var(--app-text-muted)]">اسم المنتج *</label>
             <input
                 v-model="form.name"
                 type="text"
-                class="border rounded px-2 py-1 w-full text-sm"
+                class="input-field w-full"
+                placeholder="أدخل اسم المنتج"
               />
-              <div v-if="formErrors.name" class="text-xs text-red-600 mt-0.5">
-                {{ formErrors.name }}
-          </div>
+              <div v-if="formErrors.name" class="text-xs text-red-600 mt-1">{{ formErrors.name }}</div>
           </div>
           <div>
-              <label class="block mb-1 text-sm">رمز الطلب / الـ SKU *</label>
+              <label class="block mb-1.5 text-sm font-medium text-[var(--app-text-muted)]">BARCODE رمز (اختياري)</label>
               <input
                 v-model="form.sku"
                 type="text"
-                class="border rounded px-2 py-1 w-full text-sm"
+                class="input-field w-full"
+                placeholder="يُستخدم لجميع الخصائص إن تُركت فارغة"
               />
             </div>
             <div>
-              <div class="flex items-center justify-between gap-2">
-                <label class="block mb-1 text-sm">البراند</label>
+              <div class="flex items-center justify-between gap-2 mb-1.5">
+                <label class="text-sm font-medium text-[var(--app-text-muted)]">البراند</label>
                 <button
                   type="button"
-                  class="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50"
+                  class="px-2 py-1 text-xs rounded-lg border app-border bg-[var(--app-surface)] hover:bg-[var(--app-surface-muted)] transition-colors"
                   @click="quickCreateBrand"
                 >
                   + إضافة
@@ -273,7 +299,7 @@
               </div>
               <select
                 v-model="form.brand_id"
-                class="border rounded px-2 py-1 w-full text-sm"
+                class="input-field w-full"
               >
                 <option :value="null">بدون</option>
                 <option
@@ -288,11 +314,11 @@
           </div>
 
           <div>
-            <div class="flex items-center justify-between gap-2">
-              <label class="block mb-1 text-sm">الأقسام</label>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <label class="text-sm font-medium text-[var(--app-text-muted)]">الأقسام</label>
               <button
                 type="button"
-                class="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-50"
+                class="px-2 py-1 text-xs rounded-lg border app-border bg-[var(--app-surface)] hover:bg-[var(--app-surface-muted)] transition-colors"
                 @click="quickCreateCategory"
               >
                 + إضافة
@@ -300,36 +326,36 @@
             </div>
           <div class="relative">
             <div
-              class="border rounded px-2 py-1 text-sm bg-white cursor-pointer min-h-[2.25rem] flex flex-wrap gap-1"
+              class="input-field cursor-pointer min-h-[2.5rem] flex flex-wrap gap-1.5 items-center"
               @click="categoryDropdownOpen = !categoryDropdownOpen"
             >
           <span
                 v-for="id in form.category_ids"
                 :key="id"
-                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium"
               >
                 {{ categoryNameById(id) }}
               </span>
               <span
                 v-if="!form.category_ids.length"
-                class="text-gray-400 text-xs"
+                class="text-[var(--app-text-muted)] text-sm"
               >
                 اختر الأقسام...
           </span>
         </div>
             <div
               v-if="categoryDropdownOpen"
-              class="absolute z-20 mt-1 w-full bg-white border rounded shadow max-h-48 overflow-y-auto"
+              class="absolute z-20 mt-1.5 w-full bg-[var(--app-surface)] border rounded-xl shadow-lg max-h-48 overflow-y-auto app-border"
             >
-              <div class="p-1 border-b">
+              <div class="p-2 border-b app-border">
                 <input
                   v-model="categorySearch"
                   type="text"
                   placeholder="بحث..."
-                  class="w-full border rounded px-2 py-1 text-xs"
+                  class="input-field w-full text-xs"
                 />
           </div>
-              <div class="p-1 space-y-1">
+              <div class="p-2 space-y-1">
                 <label
                   v-for="c in filteredCategories"
                   :key="c.id"
@@ -343,318 +369,295 @@
                   />
                   <span>{{ c.name }}</span>
                 </label>
+              </div>
+            </div>
           </div>
-          </div>
-        </div>
           </div>
           
           <div>
-            <label class="block mb-1 text-sm">الوصف</label>
+            <label class="block mb-1.5 text-sm font-medium text-[var(--app-text-muted)]">الوصف</label>
             <textarea
               v-model="form.description"
               rows="3"
-              class="border rounded px-2 py-1 w-full text-sm"
+              class="input-field w-full resize-none"
+              placeholder="وصف اختياري للمنتج"
             ></textarea>
           </div>
 
           <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block mb-1 text-sm">تفعيل المنتج</label>
-              <div class="flex items-center gap-2">
-                <input
-                  id="prod-active"
-                  v-model="form.is_active"
-                  type="checkbox"
-                  class="h-4 w-4"
-                />
-                <label for="prod-active" class="text-sm">مفعل</label>
-              </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl border app-border bg-[var(--app-surface-muted)]/30">
+              <input
+                id="prod-active"
+                v-model="form.is_active"
+                type="checkbox"
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label for="prod-active" class="text-sm font-medium text-[var(--app-text)]">تفعيل المنتج</label>
             </div>
-            <div>
-              <label class="block mb-1 text-sm">أحدث المنتجات</label>
-              <div class="flex items-center gap-2">
-                <input
-                  id="prod-featured"
-                  v-model="form.featured"
-                  type="checkbox"
-                  class="h-4 w-4"
-                />
-                <label for="prod-featured" class="text-sm">عرض في الأحدث</label>
-              </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl border app-border bg-[var(--app-surface-muted)]/30">
+              <input
+                id="prod-featured"
+                v-model="form.featured"
+                type="checkbox"
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label for="prod-featured" class="text-sm font-medium text-[var(--app-text)]">عرض في أحدث المنتجات</label>
+            </div>
+          </div>
+          </div>
+
+          <!-- Agency product -->
+          <div class="rounded-xl border bg-amber-50/50 dark:bg-amber-900/10 p-4 space-y-3 app-border">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input v-model="form.is_agency_product" type="checkbox" class="h-4 w-4" />
+              <span class="text-sm font-medium">هذا المنتج من الوكالة (يمكن الشحن منه)</span>
+            </label>
+            <div v-if="form.is_agency_product" class="mt-2">
+              <label class="block mb-1.5 text-sm font-medium text-[var(--app-text-muted)]">سعر الوكالة</label>
+              <input
+                v-model.number="form.agency_price"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="السعر الأساسي للمنتج"
+                class="input-field w-full"
+              />
             </div>
           </div>
 
           <!-- Properties key/value for product -->
-          <div>
-            <label class="block mb-1 text-sm">خواص المنتج (مفتاح / قيمة)</label>
+          <div class="space-y-3">
+            <h4 class="text-sm font-semibold text-[var(--app-text)] flex items-center gap-2">
+              <span class="w-1 h-4 rounded-full bg-blue-500"></span>
+              خواص المنتج
+            </h4>
             <div class="space-y-2">
               <div
                 v-for="(pair, idx) in productProperties"
                 :key="idx"
                 class="flex gap-2"
               >
-                <input
-                  v-model="pair.key"
-                  placeholder="Key"
-                  class="flex-1 border rounded px-2 py-1 text-sm"
-                />
-                <input
-                  v-model="pair.value"
-                  placeholder="Value"
-                  class="flex-1 border rounded px-2 py-1 text-sm"
-                />
-          <button
+                <input v-model="pair.key" placeholder="المفتاح" class="input-field flex-1" />
+                <input v-model="pair.value" placeholder="القيمة" class="input-field flex-1" />
+                <button
                   type="button"
-                  class="px-2 py-1 rounded bg-red-600 text-white text-xs"
+                  class="px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                   @click="removeProductProperty(idx)"
+                  title="حذف"
                 >
-                  ×
-          </button>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-          <button
+              <button
                 type="button"
-                class="px-3 py-1 rounded border text-xs"
+                class="px-3 py-2 rounded-xl border app-border text-sm font-medium hover:bg-[var(--app-surface-muted)] transition-colors"
                 @click="addProductProperty"
-            >
-                إضافة خاصية
-          </button>
-      </div>
-    </div>
-
-          <div class="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              class="px-3 py-1 rounded border text-sm"
-              @click="closeDialog"
-            >
-              إلغاء
-            </button>
-            <button
-              type="submit"
-              class="px-3 py-1 rounded bg-green-600 text-white text-sm"
-              :disabled="savingProduct"
-            >
-              {{ savingProduct ? "جار الحفظ..." : "حفظ" }}
-            </button>
-          </div>
-        </form>
-        </div>
-
-        <!-- Variants inline (same dialog) -->
-        <div v-else-if="dialogTab === 'variants'">
-          <div v-if="!currentProductForVariants" class="text-sm text-gray-600">
-            احفظ المنتج أولاً.
-          </div>
-          <div v-else>
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="text-lg font-semibold">
-                خصائص المنتج: {{ currentProductForVariants.name }}
-              </h3>
-              <button type="button" class="px-3 py-1 border rounded text-sm" @click="dialogTab = 'form'">
-                رجوع
+              >
+                + إضافة خاصية
               </button>
             </div>
+          </div>
 
-            <div v-if="variantError" class="text-red-600 text-sm mb-2">
-              {{ variantError }}
-            </div>
-
-            <div class="mb-4">
-              <table class="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th class="border-b px-2 py-1 text-right">رمز الخاصية</th>
-                    <th class="border-b px-2 py-1 text-right">اللون</th>
-                    <th class="border-b px-2 py-1 text-right">الحجم</th>
-                    <th class="border-b px-2 py-1 text-right">السعر</th>
-                    <th class="border-b px-2 py-1 text-right">المخزن</th>
-                    <th class="border-b px-2 py-1 text-right">مفعل</th>
-                    <th class="border-b px-2 py-1 text-right">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="variants.length === 0">
-                    <td colspan="7" class="border-b px-2 py-2 text-center text-gray-500">
-                      لا توجد خصائص لهذا المنتج.
-                    </td>
-                  </tr>
-                  <tr v-for="v in variants" :key="v.id">
-                    <td class="border-b px-2 py-1">{{ v.sku }}</td>
-                    <td class="border-b px-2 py-1">{{ v.color }}</td>
-                    <td class="border-b px-2 py-1">{{ v.size }}</td>
-                    <td class="border-b px-2 py-1">{{ v.price }}</td>
-                    <td class="border-b px-2 py-1">{{ v.stock }}</td>
-                    <td class="border-b px-2 py-1">
-                      <span
-                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs"
-                        :class="v.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
-                      >
-                        {{ v.is_active ? "نعم" : "لا" }}
-                      </span>
-                    </td>
-                    <td class="border-b px-2 py-1 space-x-2 space-x-reverse">
-                      <button class="px-2 py-0.5 text-xs rounded border" @click="startEditVariant(v)">
-                        تعديل
-                      </button>
-                      <button class="px-2 py-0.5 text-xs rounded bg-red-600 text-white" @click="deleteVariant(v)">
-                        حذف
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="border-t pt-4 mt-4">
-              <h4 class="font-semibold mb-2 text-sm">
-                {{ editingVariant ? "تعديل خاصية" : "إضافة خاصية جديدة" }}
-              </h4>
-              <form class="grid md:grid-cols-2 gap-3" @submit.prevent="submitVariant">
+          <!-- Variants section (inline) -->
+          <div class="border-t pt-6 app-border">
+            <h4 class="font-semibold mb-1 text-sm text-[var(--app-text)] flex items-center gap-2">
+              <span class="w-1 h-4 rounded-full bg-blue-500"></span>
+              الخصائص (لون / حجم / سعر / مخزون)
+            </h4>
+            <p class="text-xs text-[var(--app-text-muted)] mb-3">
+              BARCODE رمز اختياري — إن تُرك فارغاً يُستخدم رمز المنتج تلقائياً.
+            </p>
+            <div class="space-y-3">
+              <div
+                v-for="(v, idx) in formVariants"
+                :key="'v-' + idx"
+                class="grid grid-cols-2 md:grid-cols-6 gap-2 items-end p-4 rounded-xl border app-border bg-[var(--app-surface-muted)]/30"
+              >
                 <div>
-                  <label class="block mb-1 text-sm">رمز/اسم الخاصية *</label>
-                  <input v-model="variantForm.sku" class="w-full border rounded px-3 py-2 text-sm" />
+                  <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1">BARCODE رمز</label>
+                  <input v-model="v.sku" placeholder="اختياري" class="input-field w-full text-sm" />
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm">نوع الخاصية</label>
-                  <select v-model="variantForm.type" class="w-full border rounded px-2 py-1 text-sm">
-                    <option value="color">لون</option>
-                    <option value="size">حجم</option>
-                  </select>
-                </div>
-                <div v-if="variantForm.type === 'color'">
-                  <label class="block mb-1 text-sm">اللون</label>
-                  <input v-model="variantForm.color" class="w-full border rounded px-3 py-2 text-sm" />
-                </div>
-                <div v-else>
-                  <label class="block mb-1 text-sm">الحجم</label>
-                  <input v-model="variantForm.size" class="w-full border rounded px-3 py-2 text-sm" />
+                  <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1">اللون</label>
+                  <input v-model="v.color" class="input-field w-full text-sm" />
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm">السعر</label>
-                  <input v-model="variantForm.price" type="number" step="0.01" min="0" class="w-full border rounded px-3 py-2 text-sm" />
+                  <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1">الحجم</label>
+                  <input v-model="v.size" class="input-field w-full text-sm" />
                 </div>
                 <div>
-                  <label class="block mb-1 text-sm">المخزن</label>
-                  <input v-model="variantForm.stock" type="number" min="0" class="w-full border rounded px-3 py-2 text-sm" />
+                  <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1">السعر</label>
+                  <input v-model.number="v.price" type="number" step="0.01" min="0" class="input-field w-full text-sm" />
                 </div>
-                <div class="flex items-center gap-2 mt-6">
-                  <input id="variant-active" v-model="variantForm.is_active" type="checkbox" class="h-4 w-4" />
-                  <label for="variant-active" class="text-sm">مفعل</label>
+                <div>
+                  <label class="block text-xs font-medium text-[var(--app-text-muted)] mb-1">المخزون</label>
+                  <input v-model.number="v.stock" type="number" min="0" class="input-field w-full text-sm" />
                 </div>
-
-                <div class="md:col-span-2">
-                  <label class="block mb-1 text-sm">خواص النسخة (مفتاح / قيمة)</label>
-                  <div class="space-y-2">
-                    <div v-for="(pair, idx) in variantForm.properties" :key="idx" class="flex gap-2">
-                      <input v-model="pair.key" placeholder="Key" class="flex-1 border rounded px-2 py-1 text-sm" />
-                      <input v-model="pair.value" placeholder="Value" class="flex-1 border rounded px-2 py-1 text-sm" />
-                      <button type="button" class="px-2 py-1 rounded bg-red-600 text-white text-xs" @click="removeProperty(idx)">
-                        ×
-                      </button>
-                    </div>
-                    <button type="button" class="px-3 py-1 rounded border text-xs" @click="addProperty">
-                      إضافة خاصية
-                    </button>
-                  </div>
-                </div>
-
-                <div class="md:col-span-2 flex justify-end gap-2 pt-2">
-                  <button type="submit" class="px-4 py-2 rounded bg-green-600 text-white text-sm">
-                    {{ editingVariant ? "تحديث الخاصية" : "إضافة الخاصية" }}
-                  </button>
-                  <button type="button" class="px-4 py-2 rounded border text-sm" @click="resetVariantForm">
-                    تهيئة النموذج
+                <div>
+                  <button type="button" class="px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-medium transition-colors" @click="removeFormVariant(idx)">
+                    حذف
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        <!-- Images inline (same dialog) -->
-        <div v-else-if="dialogTab === 'images'">
-          <div v-if="!currentProductForImages" class="text-sm text-gray-600">
-            احفظ المنتج أولاً.
-          </div>
-          <div v-else>
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="text-lg font-semibold">
-                صور المنتج: {{ currentProductForImages.name }}
-              </h3>
-              <button type="button" class="px-3 py-1 border rounded text-sm" @click="dialogTab = 'form'">
-                رجوع
+              </div>
+              <button type="button" class="px-4 py-2 rounded-xl border app-border text-sm font-medium hover:bg-[var(--app-surface-muted)] transition-colors" @click="addFormVariant">
+                + إضافة خاصية
               </button>
             </div>
+          </div>
 
-            <div v-if="imageError" class="text-red-600 text-sm mb-2">
+          <!-- Images section (create & edit) -->
+          <div class="border-t pt-6 mt-6 app-border">
+            <h4 class="font-semibold mb-3 text-sm text-[var(--app-text)] flex items-center gap-2">
+              <span class="w-1 h-4 rounded-full bg-blue-500"></span>
+              صور المنتج
+            </h4>
+
+            <div v-if="imageError" class="text-red-600 text-sm mb-3 p-3 rounded-xl bg-red-50 border border-red-200">
               {{ imageError }}
             </div>
 
-            <div class="mb-4">
-              <table class="w-full text-sm border-collapse">
-                <thead>
-                  <tr>
-                    <th class="border-b px-2 py-1 text-right">الصورة</th>
-                    <th class="border-b px-2 py-1 text-right">الترتيب</th>
-                    <th class="border-b px-2 py-1 text-right">إجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="images.length === 0">
-                    <td colspan="3" class="border-b px-2 py-2 text-center text-gray-500">
-                      لا توجد صور لهذا المنتج.
-                    </td>
-                  </tr>
-                  <tr v-for="img in images" :key="img.id">
-                    <td class="border-b px-2 py-1">
-                      <img :src="img.url" alt="" class="w-16 h-16 object-cover rounded border" />
-                    </td>
-                    <td class="border-b px-2 py-1">
-                      {{ img.sort_order }}
-                    </td>
-                    <td class="border-b px-2 py-1 space-x-2 space-x-reverse">
-                      <button class="px-2 py-0.5 text-xs rounded border" @click="startEditImage(img)">
-                        تعديل
-                      </button>
-                      <button class="px-2 py-0.5 text-xs rounded bg-red-600 text-white" @click="deleteImage(img)">
-                        حذف
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <!-- Drag & drop / select zone -->
+            <div
+              class="relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-200"
+              :class="[
+                isDragOver
+                  ? 'border-blue-500 bg-blue-50/50'
+                  : 'app-border hover:border-blue-400/50 bg-[var(--app-surface-muted)]/30 hover:bg-[var(--app-surface-muted)]/50',
+              ]"
+              @dragover.prevent="isDragOver = true"
+              @dragleave.prevent="isDragOver = false"
+              @drop.prevent="onImageDrop"
+            >
+              <input
+                ref="imageFileInputRef"
+                type="file"
+                accept="image/*"
+                multiple
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                @change="onImageFileChange"
+              />
+              <div class="pointer-events-none">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p class="mt-2 text-sm text-gray-600">
+                  اسحب الصور هنا أو
+                  <span class="text-blue-600 font-medium">انقر للاختيار</span>
+                </p>
+                <p class="mt-1 text-xs text-gray-400">PNG, JPG, WebP حتى 5 ميجا</p>
+              </div>
             </div>
 
-            <div class="border-t pt-4 mt-4">
-              <h4 class="font-semibold mb-2 text-sm">
-                {{ editingImage ? "تعديل صورة" : "إضافة صورة جديدة" }}
-              </h4>
-              <div class="space-y-3">
-                <div>
-                  <label class="block mb-1 text-sm">الصورة</label>
-                  <input type="file" accept="image/*" @change="onImageFileChange" />
+            <!-- Pending uploads preview -->
+            <div v-if="pendingImageFiles.length > 0" class="mt-4">
+              <p class="text-xs font-medium text-gray-600 mb-2">
+                صور جاهزة للرفع ({{ pendingImageFiles.length }})
+                <span v-if="!activeDialogProduct" class="text-amber-600 font-normal">— ستُرفع تلقائياً عند حفظ المنتج</span>
+              </p>
+              <div class="flex flex-wrap gap-3">
+                <div
+                  v-for="(item, idx) in pendingImageFiles"
+                  :key="'pending-' + idx"
+                  class="relative group rounded-lg overflow-hidden border bg-white shadow-sm"
+                >
+                  <img :src="item.preview" alt="" class="w-20 h-20 object-cover" />
+                  <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      class="p-1.5 rounded-full bg-red-500 text-white hover:bg-red-600"
+                      @click.stop="removePendingImage(idx)"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="p-1.5 bg-gray-50 flex items-center gap-1">
+                    <label class="text-[10px] text-gray-500 whitespace-nowrap">ترتيب:</label>
+                    <input
+                      v-model.number="item.sort_order"
+                      type="number"
+                      min="0"
+                      class="w-12 text-xs border rounded px-1 py-0.5"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label class="block mb-1 text-sm">الترتيب</label>
-                  <input v-model.number="imageForm.sort_order" type="number" class="border rounded px-2 py-1 w-32 text-sm" />
-                </div>
-                <div v-if="imagePreview" class="mt-2">
-                  <img :src="imagePreview" alt="" class="w-32 h-32 object-cover rounded border" />
-                </div>
-                <div class="flex justify-end gap-2 pt-2">
-                  <button class="px-3 py-1 rounded border text-sm" @click="resetImageForm">
-                    تهيئة
-                  </button>
-                  <button class="px-3 py-1 rounded bg-green-600 text-white text-sm" @click="submitImage">
-                    حفظ الصورة
-                  </button>
+              </div>
+              <button
+                v-if="activeDialogProduct"
+                type="button"
+                class="mt-3 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                :disabled="uploadingImages"
+                @click="uploadPendingImages"
+              >
+                {{ uploadingImages ? "جاري الرفع..." : "رفع الكل" }}
+              </button>
+            </div>
+
+            <!-- Existing images gallery (edit only) -->
+            <div v-if="activeDialogProduct && images.length > 0" class="mt-4">
+              <p class="text-xs font-medium text-gray-600 mb-2">الصور المرفوعة</p>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div
+                  v-for="img in images"
+                  :key="img.id"
+                  class="group relative rounded-lg overflow-hidden border bg-white shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <img :src="img.url" alt="" class="w-full aspect-square object-cover" />
+                  <div class="p-2 bg-gray-50 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1 flex-1 min-w-0">
+                      <label class="text-[10px] text-gray-500 shrink-0">ترتيب:</label>
+                      <input
+                        :value="img.sort_order"
+                        type="number"
+                        min="0"
+                        class="w-12 text-xs border rounded px-1 py-0.5 shrink-0"
+                        @change="(e) => updateImageSort(img, parseInt((e.target as HTMLInputElement).value, 10))"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      class="p-1 rounded text-red-600 hover:bg-red-50"
+                      title="حذف"
+                      @click="deleteImage(img)"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
+        </form>
+            </div>
+
+            <!-- Dialog footer -->
+            <div class="flex justify-end gap-3 px-6 py-4 border-t app-border bg-[var(--app-surface-muted)]/30">
+              <button
+                type="button"
+                class="px-4 py-2.5 rounded-xl border app-border text-sm font-medium hover:bg-[var(--app-surface-muted)] transition-colors"
+                @click="closeDialog"
+              >
+                إلغاء
+              </button>
+              <button
+                type="submit"
+                form="product-form"
+                class="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                :disabled="savingProduct"
+              >
+                {{ savingProduct ? "جار الحفظ..." : "حفظ المنتج" }}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -768,8 +771,6 @@ const dialog = reactive({
   id: null as number | null,
 });
 
-const dialogTab = ref<"form" | "variants" | "images">("form");
-
 const dialogProduct = ref<Product | null>(null);
 
 const activeDialogProduct = computed<Product | null>(() => {
@@ -786,6 +787,8 @@ const form = reactive<{
   description: string;
   is_active: boolean;
   featured: boolean;
+  is_agency_product: boolean;
+  agency_price: number | null;
   category_ids: number[];
 }>({
   vendor_id: null,
@@ -795,8 +798,27 @@ const form = reactive<{
   description: "",
   is_active: true,
   featured: false,
+  is_agency_product: false,
+  agency_price: null,
   category_ids: [],
 });
+
+const formVariants = ref<Array<{ id?: number; sku: string; color: string; size: string; price: number; stock: number; is_active: boolean }>>([]);
+
+function addFormVariant() {
+  formVariants.value.push({
+    sku: "",
+    color: "",
+    size: "",
+    price: 0,
+    stock: 0,
+    is_active: true,
+  });
+}
+
+function removeFormVariant(idx: number) {
+  formVariants.value.splice(idx, 1);
+}
 
 const productProperties = ref<Array<{ key: string; value: string }>>([]);
 const categoryDropdownOpen = ref(false);
@@ -929,8 +951,6 @@ const fetchCategories = async (vendorIdOverride?: number | null) => {
 };
 
 const resetForm = () => {
-  // For super admins, default to the currently selected vendor in the filter.
-  // For vendor users, always use the user's own vendor id.
   if (isSuperAdmin.value) {
     form.vendor_id = filters.vendorId || null;
   } else {
@@ -942,8 +962,12 @@ const resetForm = () => {
   form.description = "";
   form.is_active = true;
   form.featured = false;
+  form.is_agency_product = false;
+  form.agency_price = null;
   form.category_ids = [];
   productProperties.value = [];
+  formVariants.value = [{ sku: "", color: "", size: "", price: 0, stock: 0, is_active: true }];
+  resetImageForm();
 
   Object.keys(formErrors).forEach((k) => {
     // @ts-ignore
@@ -988,7 +1012,6 @@ const openCreate = () => {
   dialog.mode = "create";
   dialog.id = null;
   dialogProduct.value = null;
-  dialogTab.value = "form";
   resetForm();
   // Ensure brand/category options are aligned with the chosen vendor when opening the dialog
   if (isSuperAdmin.value) {
@@ -1002,16 +1025,29 @@ const openEdit = (p: Product) => {
   dialog.mode = "edit";
   dialog.id = p.id;
   dialogProduct.value = p;
-  dialogTab.value = "form";
   resetForm();
   form.vendor_id = p.vendor_id ?? null;
   form.brand_id = p.brand_id ?? null;
   form.name = p.name;
-  form.sku = p.sku;
+  form.sku = p.sku ?? "";
   form.description = p.description ?? "";
   form.is_active = !!p.is_active;
   form.featured = !!p.featured;
+  form.is_agency_product = !!(p as any).is_agency_product;
+  form.agency_price = (p as any).agency_price != null ? Number((p as any).agency_price) : null;
   form.category_ids = (p.categories ?? []).map((c) => c.id);
+  formVariants.value = (p.variants ?? []).map((v) => ({
+    id: v.id,
+    sku: v.sku ?? "",
+    color: v.color ?? "",
+    size: v.size ?? "",
+    price: typeof v.price === "number" ? v.price : parseFloat(String(v.price)) || 0,
+    stock: typeof v.stock === "number" ? v.stock : parseInt(String(v.stock), 10) || 0,
+    is_active: !!v.is_active,
+  }));
+  if (formVariants.value.length === 0) {
+    formVariants.value = [{ sku: "", color: "", size: "", price: 0, stock: 0, is_active: true }];
+  }
   productProperties.value = Object.entries(p.properties ?? {}).map(
     ([key, value]) => ({
       key,
@@ -1024,11 +1060,6 @@ const openEdit = (p: Product) => {
 const closeDialog = () => {
   dialog.open = false;
   dialogProduct.value = null;
-  dialogTab.value = "form";
-  currentProductForVariants.value = null;
-  variants.value = [];
-  resetVariantForm();
-  variantError.value = null;
   currentProductForImages.value = null;
   images.value = [];
   resetImageForm();
@@ -1049,16 +1080,29 @@ const buildProductPayload = () => {
     if (p.key) props[p.key] = p.value;
   });
 
+  const variants = formVariants.value.map((v) => ({
+    id: v.id,
+    sku: v.sku?.trim() || null,
+    color: v.color?.trim() || null,
+    size: v.size?.trim() || null,
+    price: typeof v.price === "number" ? v.price : parseFloat(String(v.price)) || 0,
+    stock: typeof v.stock === "number" ? v.stock : parseInt(String(v.stock), 10) || 0,
+    is_active: !!v.is_active,
+  }));
+
   return {
     vendor_id: form.vendor_id,
     brand_id: form.brand_id,
     name: form.name,
-    sku: form.sku,
+    sku: form.sku?.trim() || null,
     description: form.description || null,
     is_active: form.is_active ? 1 : 0,
     featured: form.featured ? 1 : 0,
+    is_agency_product: form.is_agency_product ? 1 : 0,
+    agency_price: form.is_agency_product && form.agency_price != null ? form.agency_price : null,
     properties: Object.keys(props).length ? JSON.stringify(props) : null,
     categories: form.category_ids,
+    variants: variants.length ? variants : undefined,
   };
 };
 
@@ -1076,14 +1120,15 @@ const submitProduct = async () => {
       const res = await axiosInstance.post("v1/admin/products", payload);
       const created = res.data as Product;
       products.value.unshift(created);
-      dialog.mode = "edit";
-      dialog.id = created.id;
-      dialogProduct.value = created;
-      // keep the dialog open so user can add images/variants مباشرة داخل نفس النافذة
-      dialogTab.value = "variants";
-      currentProductForVariants.value = created;
-      variants.value = [];
-      await fetchVariants(created.id);
+
+      // Upload pending images to the new product
+      if (pendingImageFiles.value.length > 0) {
+        currentProductForImages.value = created;
+        await uploadPendingImages();
+      }
+
+      closeDialog();
+      fetchProducts();
       return;
     } else if (dialog.id != null) {
       const res = await axiosInstance.put(
@@ -1121,21 +1166,13 @@ const submitProduct = async () => {
 };
 
 watch(
-  () => [dialog.open, dialogTab.value, activeDialogProduct.value?.id] as const,
-  async ([open, tab, id]) => {
-    if (!open) return;
-    if (!id) return;
+  () => [dialog.open, activeDialogProduct.value?.id] as const,
+  async ([open, id]) => {
+    if (!open || !id) return;
     const p = activeDialogProduct.value;
     if (!p) return;
-
-    if (tab === "variants") {
-      currentProductForVariants.value = p;
-      await fetchVariants(p.id);
-    }
-    if (tab === "images") {
-      currentProductForImages.value = p;
-      await fetchImages(p.id);
-    }
+    currentProductForImages.value = p;
+    await fetchImages(p.id);
   },
 );
 async function quickCreateBrand() {
@@ -1368,11 +1405,18 @@ async function deleteVariant(v: Variant) {
 // Images state
 const currentProductForImages = ref<Product | null>(null);
 const images = ref<ProductImage[]>([]);
-const editingImage = ref<ProductImage | null>(null);
 const imageError = ref<string | null>(null);
-const imageFile = ref<File | null>(null);
-const imagePreview = ref<string | null>(null);
-const imageForm = ref<{ sort_order: number }>({ sort_order: 0 });
+const isDragOver = ref(false);
+const imageFileInputRef = ref<HTMLInputElement | null>(null);
+
+interface PendingImage {
+  file: File;
+  preview: string;
+  sort_order: number;
+}
+
+const pendingImageFiles = ref<PendingImage[]>([]);
+const uploadingImages = ref(false);
 
 async function fetchImages(productId: number) {
   try {
@@ -1387,73 +1431,87 @@ async function fetchImages(productId: number) {
   }
 }
 
-function startEditImage(img: ProductImage) {
-  editingImage.value = img;
-  imageForm.value.sort_order = img.sort_order;
-  imageFile.value = null;
-  imagePreview.value = img.url;
+function onImageDrop(e: DragEvent) {
+  isDragOver.value = false;
+  const files = e.dataTransfer?.files;
+  if (!files?.length) return;
+  addFilesToPending(Array.from(files));
 }
 
 function onImageFileChange(e: Event) {
   const input = e.target as HTMLInputElement;
-  const file = input.files?.[0] || null;
-  imageFile.value = file;
-  imagePreview.value = file ? URL.createObjectURL(file) : null;
+  const files = input.files;
+  if (!files?.length) return;
+  addFilesToPending(Array.from(files));
+  input.value = "";
+}
+
+function addFilesToPending(files: File[]) {
+  const maxSort = Math.max(0, ...images.value.map((i) => i.sort_order), ...pendingImageFiles.value.map((p) => p.sort_order));
+  let nextSort = pendingImageFiles.value.length > 0 ? maxSort + 1 : maxSort;
+  const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+  for (const file of imageFiles) {
+    pendingImageFiles.value.push({
+      file,
+      preview: URL.createObjectURL(file),
+      sort_order: nextSort++,
+    });
+  }
+}
+
+function removePendingImage(idx: number) {
+  const item = pendingImageFiles.value[idx];
+  if (item?.preview) URL.revokeObjectURL(item.preview);
+  pendingImageFiles.value.splice(idx, 1);
+}
+
+async function uploadPendingImages() {
+  if (!currentProductForImages.value || pendingImageFiles.value.length === 0) return;
+  imageError.value = null;
+  uploadingImages.value = true;
+  const productId = currentProductForImages.value.id;
+  const config = { headers: { "Content-Type": "multipart/form-data" } };
+
+  try {
+    for (const item of pendingImageFiles.value) {
+      const fd = new FormData();
+      fd.append("image", item.file);
+      fd.append("sort_order", String(item.sort_order ?? 0));
+      await axiosInstance.post(`v1/admin/products/${productId}/images`, fd, config);
+    }
+    pendingImageFiles.value.forEach((p) => p.preview && URL.revokeObjectURL(p.preview));
+    pendingImageFiles.value = [];
+    await fetchImages(productId);
+  } catch (e: any) {
+    console.error("Upload failed", e);
+    const resp = e?.response?.data;
+    imageError.value = resp?.message ?? "حدث خطأ أثناء رفع الصور.";
+  } finally {
+    uploadingImages.value = false;
+  }
+}
+
+async function updateImageSort(img: ProductImage, newSort: number) {
+  if (!currentProductForImages.value || isNaN(newSort)) return;
+  try {
+    const fd = new FormData();
+    fd.append("sort_order", String(newSort));
+    await axiosInstance.post(
+      `v1/admin/products/${currentProductForImages.value.id}/images/${img.id}`,
+      fd,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    await fetchImages(currentProductForImages.value.id);
+  } catch (e) {
+    console.error("Failed to update sort", e);
+    imageError.value = "فشل في تحديث الترتيب.";
+  }
 }
 
 function resetImageForm() {
-  editingImage.value = null;
-  imageForm.value = { sort_order: 0 };
-  imageFile.value = null;
-  imagePreview.value = null;
-}
-
-async function submitImage() {
-  if (!currentProductForImages.value) return;
+  pendingImageFiles.value.forEach((p) => p.preview && URL.revokeObjectURL(p.preview));
+  pendingImageFiles.value = [];
   imageError.value = null;
-  try {
-    const fd = new FormData();
-    if (imageFile.value) {
-      fd.append("image", imageFile.value);
-    }
-    fd.append("sort_order", String(imageForm.value.sort_order ?? 0));
-
-    const config = {
-      headers: { "Content-Type": "multipart/form-data" },
-    };
-
-    const productId = currentProductForImages.value.id;
-
-    if (editingImage.value) {
-      await axiosInstance.post(
-        `v1/admin/products/${productId}/images/${editingImage.value.id}`,
-        fd,
-        config,
-      );
-    } else {
-      await axiosInstance.post(
-        `v1/admin/products/${productId}/images`,
-        fd,
-        config,
-      );
-    }
-
-    await fetchImages(productId);
-    resetImageForm();
-  } catch (e: any) {
-    console.error("Failed to save image", e);
-    const resp = e?.response?.data;
-    if (resp?.errors) {
-      const all = Object.values(resp.errors as any)
-        .flat()
-        .map((x: any) => String(x));
-      imageError.value = all.join("\n");
-    } else if (resp?.message) {
-      imageError.value = String(resp.message);
-    } else {
-      imageError.value = "حدث خطأ أثناء حفظ الصورة.";
-    }
-  }
 }
 
 async function deleteImage(img: ProductImage) {

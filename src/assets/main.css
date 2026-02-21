@@ -451,6 +451,12 @@ select {
   color: var(--app-text);
 }
 
+/* Professional input field styling */
+.input-field {
+  @apply rounded-xl px-3 py-2.5 text-sm border app-border bg-[#f9fafb];
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: #9ca3af;
@@ -517,6 +523,10 @@ html[data-theme="dark"] .table-header {
 .table-header-cell {
   color: var(--app-text-muted);
   border-bottom: 1px solid var(--app-border);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
 }
 
 html[data-theme="dark"] .table-header-cell {
@@ -656,6 +666,16 @@ html[data-theme="dark"] .topbar-control__btn--accent {
   min-width: 2.5rem;
   text-align: center;
   font-size: 0.75rem;
+}
+
+/* Modal transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
 }
 
 html[data-theme="dark"] .topbar-control__value {

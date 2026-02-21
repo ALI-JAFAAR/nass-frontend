@@ -18,6 +18,7 @@
 
         <div class="flex flex-wrap gap-2">
           <button
+            v-if="canManageDeliveryWallet"
             class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50"
             :disabled="loading"
             @click="syncDelivered"
@@ -25,6 +26,7 @@
             {{ syncing ? "جارِ المزامنة..." : "مزامنة (تم التسليم)" }}
           </button>
           <button
+            v-if="canManageDeliveryWallet"
             class="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
             :disabled="loading"
             @click="loadWallet"
@@ -86,6 +88,7 @@
               سيتم إنشاء حركة "تسوية" وتنقيص الرصيد.
             </p>
             <button
+              v-if="canManageDeliveryWallet"
               class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50"
               :disabled="loading || !canSettle"
               @click="settle"
@@ -129,6 +132,7 @@
           </div>
         </div>
         <button
+          v-if="canManageDeliveryWallet"
           class="px-3 py-2 rounded-lg border text-sm hover:bg-gray-50"
           :disabled="loading"
           @click="loadWallet"
@@ -188,11 +192,24 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import axiosInstance from "@/api/axios";
+import { useAuthStore } from "@/stores/auth";
 
 const loading = ref(false);
 const syncing = ref(false);
 const error = ref("");
 const lastSyncMessage = ref("");
+
+const auth = useAuthStore();
+const myPermissions = computed<string[]>(() => {
+  const p = auth.user?.permissions;
+  return Array.isArray(p) ? (p as string[]) : [];
+});
+const canManageDeliveryWallet = computed(
+  () =>
+    myPermissions.value.includes("محفظة التوصيل") ||
+    myPermissions.value.includes("manage delivery wallet") ||
+    myPermissions.value.includes("delivery wallet"),
+);
 
 const wallet = ref<{ id: number; balance: number } | null>(null);
 const transactions = ref<any[]>([]);

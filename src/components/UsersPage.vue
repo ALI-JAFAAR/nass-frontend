@@ -5,6 +5,7 @@
       <div class="px-4 py-3 flex justify-between items-center border-b">
         <h2 class="font-semibold">إدارة المستخدمين</h2>
         <button
+          v-if="canManageUsers"
           class="px-4 py-2 rounded bg-blue-600 text-white"
           @click="openUserDialogForNew"
         >
@@ -20,6 +21,7 @@
           />
           <!-- CSV export left as simple JSON download to avoid react-csv -->
           <button
+            v-if="canManageUsers"
             class="px-4 py-2 rounded bg-green-600 text-white"
             type="button"
             @click="downloadUsersCsv"
@@ -77,19 +79,21 @@
 
           <template #cell-actions="{ item }">
             <button
-              v-if="isEmployeeUser(item)"
+              v-if="canManageUsers && isEmployeeUser(item)"
               class="px-3 py-1 border rounded text-xs"
               @click="openWalletDialog(item)"
             >
               محفظة
             </button>
             <button
+              v-if="canManageUsers"
               class="px-3 py-1 border rounded text-xs"
               @click="openUserDialogForEdit(item)"
             >
               تعديل
             </button>
             <button
+              v-if="canManageUsers"
               class="px-3 py-1 rounded bg-red-600 text-white text-xs ml-2"
               @click="handleDeleteUser(item.id)"
             >
@@ -117,6 +121,7 @@
       <div class="px-4 py-3 flex justify-between items-center border-b">
         <h2 class="font-semibold">إدارة الأدوار</h2>
         <button
+          v-if="canManageRoles"
           class="px-4 py-2 rounded bg-blue-600 text-white"
           @click="openRoleDialogForNew"
         >
@@ -131,6 +136,7 @@
             class="w-1/2 border rounded px-3 py-2"
           />
           <button
+            v-if="canManageRoles"
             class="px-4 py-2 rounded bg-green-600 text-white"
             type="button"
             @click="downloadRolesCsv"
@@ -162,12 +168,14 @@
 
           <template #cell-actions="{ item }">
             <button
+              v-if="canManageRoles"
               class="px-3 py-1 border rounded text-xs"
               @click="openRoleDialogForEdit(item)"
             >
               تعديل
             </button>
             <button
+              v-if="canManageRoles"
               class="px-3 py-1 rounded bg-red-600 text-white text-xs ml-2"
               @click="handleDeleteRole(item.id)"
             >
@@ -292,6 +300,7 @@
               </option>
             </select>
           </div>
+
           <button
             type="submit"
             class="w-full px-4 py-2 rounded bg-green-600 text-white mt-2"
@@ -389,6 +398,7 @@
             إلغاء
           </button>
           <button
+            v-if="canManageRoles"
             type="button"
             class="px-5 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 shadow-sm"
             @click="handleRoleSubmit"
@@ -558,7 +568,31 @@ import { downloadCsv } from "@/utils/csv";
 const auth = useAuthStore();
 const isSuperAdmin = computed(() => !auth.user?.vendor_id);
 
-const perPage = 5;
+const myPermissions = computed<string[]>(() => {
+  const p = auth.user?.permissions;
+  return Array.isArray(p) ? (p as string[]) : [];
+});
+
+const canManageUsers = computed(() =>
+  myPermissions.value.includes("المستخدمين") ||
+  myPermissions.value.includes("manage users"),
+);
+
+const canManageRoles = computed(() =>
+  myPermissions.value.includes("manage roles") ||
+  myPermissions.value.includes("manage permissions") ||
+  // Some deployments reuse the users permission for role management.
+  myPermissions.value.includes("المستخدمين") ||
+  myPermissions.value.includes("manage users"),
+);
+
+const canManageVendors = computed(() =>
+  isSuperAdmin.value ||
+  myPermissions.value.includes("إدارة المحلات") ||
+  myPermissions.value.includes("manage vendors"),
+);
+
+const perPage = 10;
 
 const searchUser = ref("");
 const userPage = ref(1);
@@ -700,6 +734,12 @@ async function fetchShops() {
     allShops.value = [];
   }
 }
+
+const selectedShop = computed(() => {
+  const id = Number(userForm.value.shop_id || 0);
+  if (!id) return null;
+  return allShops.value.find((s: any) => Number(s?.id) === id) ?? null;
+});
 
 async function fetchUsers() {
   loadingUsers.value = true;
@@ -915,6 +955,7 @@ async function handleUserSubmit() {
   } else {
     await axiosInstance.post(base, payload);
   }
+
   isUserDialogOpen.value = false;
   userForm.value = {
     name: "",
@@ -932,7 +973,8 @@ async function handleUserSubmit() {
 
 async function handleDeleteUser(id: number) {
   if (confirm("هل أنت متأكد من حذف المستخدم؟")) {
-    await axiosInstance.delete(`v1/vendor/users/${id}`);
+    const base = isSuperAdmin.value ? "v1/admin/users" : "v1/vendor/users";
+    await axiosInstance.delete(`${base}/${id}`);
     fetchUsers();
   }
 }
@@ -996,13 +1038,11 @@ function handleDeletePermission(_id: number) {
 
 async function handleRoleSubmit() {
   const payload = { name: roleName.value, permissions: rolePerms.value };
+  const base = isSuperAdmin.value ? "v1/admin/roles" : "v1/vendor/roles";
   if (editingRole.value) {
-    await axiosInstance.put(
-      `v1/vendor/roles/${editingRole.value.id}`,
-      payload
-    );
+    await axiosInstance.put(`${base}/${editingRole.value.id}`, payload);
   } else {
-    await axiosInstance.post("v1/vendor/roles", payload);
+    await axiosInstance.post(base, payload);
   }
   isRoleDialogOpen.value = false;
   editingRole.value = null;
@@ -1013,7 +1053,8 @@ async function handleRoleSubmit() {
 
 async function handleDeleteRole(id: number) {
   if (confirm("حذف الدور؟")) {
-    await axiosInstance.delete(`v1/vendor/roles/${id}`);
+    const base = isSuperAdmin.value ? "v1/admin/roles" : "v1/vendor/roles";
+    await axiosInstance.delete(`${base}/${id}`);
     fetchRoles();
   }
 }

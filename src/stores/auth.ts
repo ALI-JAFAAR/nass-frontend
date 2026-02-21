@@ -7,6 +7,8 @@ interface User {
   username: string;
   email?: string | null;
   vendor_id?: number | null;
+  vendor_type?: string | null;
+  agency_vendor_id?: number | null;
   role?: string;
   permissions?: string[];
   shop_id?: number | null;

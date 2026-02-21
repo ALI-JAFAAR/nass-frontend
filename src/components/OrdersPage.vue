@@ -397,7 +397,7 @@
           </div>
 
           <!-- Fast/internal delivery assignment -->
-          <div class="rounded-lg border p-4 bg-blue-50/40">
+          <div v-if="canManageSalesInvoices" class="rounded-lg border p-4 bg-blue-50/40">
             <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
               <div>
                 <h4 class="font-semibold text-sm">توصيل سريع (مندوب الشركة)</h4>
@@ -521,6 +521,7 @@
 
           <div class="flex gap-2 pt-4">
             <button
+              v-if="canManageSalesInvoices"
               class="flex-1 px-4 py-2 rounded bg-green-600 text-white"
               :disabled="saving"
               @click="saveStatus"
@@ -544,6 +545,19 @@
 import { computed, onMounted, ref, watch } from "vue";
 import axiosInstance from "@/api/axios";
 import { fmtMoney, fmtDate } from "@/utils/format";
+import { useAuthStore } from "@/stores/auth";
+
+const auth = useAuthStore();
+const myPermissions = computed<string[]>(() => {
+  const p = auth.user?.permissions;
+  return Array.isArray(p) ? (p as string[]) : [];
+});
+const canManageSalesInvoices = computed(
+  () =>
+    myPermissions.value.includes("فواتير المبيعات") ||
+    myPermissions.value.includes("manage sales invoices") ||
+    myPermissions.value.includes("manage orders"),
+);
 
 interface OrderItem {
   id: number;
